@@ -49,7 +49,7 @@ if ($id) {
 }
 
 require_login($course, true, $cm);
-$context = get_context_instance(CONTEXT_MODULE, $cm->id);
+$context = context_module::instance($cm->id);
 require_capability('mod/qv:view', $context);
 
 add_to_log($course->id, 'qv', 'view', "view.php?id={$cm->id}", $qv->name, $cm->id);

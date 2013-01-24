@@ -203,13 +203,13 @@ require_once("$CFG->libdir/filelib.php");
             if ($qv->target=='self'){
                 $qvwidth=$qv->width!=''?$qv->width:'99%';
                 $qvheight=$qv->height!=''?$qv->height:'400';
-                echo "<IFRAME src='$qv_full_url' title='Quaderns Virtuals' width='$qvwidth' height='$qvheight'></IFRAME>";
+                echo "<iframe src='$qv_full_url' title='Quaderns Virtuals' width='$qvwidth' height='$qvheight'></iframe>";
             } else {
                 $PAGE->requires->js('/mod/qv/qv.js');
                 $fullscreen=$qv->width==''||$qv->width=='100%'||$qv->height==''?'true':'false';
-                echo "<A href='#' onclick='openpopupName(\"$qv_full_url\",\"toolbar=no,status=no,scrollbars=yes,resizable=yes,width=$qv->width,height=$qv->height\",$fullscreen);'>";//Albert
+                echo "<a href='#' onclick='openpopupName(\"$qv_full_url\",\"toolbar=no,status=no,scrollbars=yes,resizable=yes,width=$qv->width,height=$qv->height\",$fullscreen);'>";//Albert
                 print_string("start", "qv");
-                echo "</A><br/>";
+                echo "</a><br/>";
             }
             qv_view_dates($qv, $context, $timenow);            
         }
