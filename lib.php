@@ -37,6 +37,7 @@ define('QV_DEFAULT_DISTAPPL', 'http://clic.xtec.cat/qv_viewer/dist/html/appl/');
 define('QV_DEFAULT_DISTSCRIPTS', 'http://clic.xtec.cat/qv_viewer/dist/html/scripts/');
 define('QV_DEFAULT_DISTCSS', 'http://clic.xtec.cat/qv_viewer/dist/html/css/');
 define('QV_DEFAULT_SKINS', 'default,infantil,formal');
+
 define('QV_HASH_UPDATE', 'update');
 define('QV_HASH_ONLINE', 'online');
 
@@ -54,7 +55,7 @@ if (!isset($CFG->qv_skins)) {
     set_config('qv_skins', QV_DEFAULT_SKINS);
 }*/
 
-// JClic file types
+// QV file types
 define('QV_FILE_TYPE_LOCAL', 'local');
 define('QV_FILE_TYPE_EXTERNAL', 'external');
 
@@ -311,7 +312,7 @@ function qv_delete_instance($id) {
 function qv_user_outline($course, $user, $mod, $qv) {    
     global $CFG;
     
-    require_once("$CFG->libdir/gradelib.php");
+    require_once($CFG->libdir.'/gradelib.php');
     $result = null;
     
     $grades = grade_get_grades($course->id, 'mod', 'qv', $qv->id, $user->id);

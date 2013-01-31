@@ -82,8 +82,10 @@ class qv_package_file_info extends file_info_stored {
     * @return array   The array with each file type
     */
     function qv_get_file_types(){
-        $filetypes =  array(QV_FILE_TYPE_LOCAL => get_string('filetypelocal', 'qv'));
-        $filetypes[QV_FILE_TYPE_EXTERNAL] = get_string('filetypeexternal', 'qv');
+        $filetypes =  array(
+				QV_FILE_TYPE_LOCAL => get_string('filetypelocal', 'qv'),
+				QV_FILE_TYPE_EXTERNAL => get_string('filetypeexternal', 'qv')
+			);
         return $filetypes;
     }    
 
@@ -142,12 +144,12 @@ class qv_package_file_info extends file_info_stored {
 
         echo $OUTPUT->box_start('generalbox boxaligncenter qvdates', 'dates');
         if ($qv->timeavailable) {
-            echo '<div class="title-time">'.get_string('availabledate','assignment').': </div>';
-            echo '<div class="data-time">'.userdate($qv->timeavailable).'</div>';
+			echo $OUTPUT->box(get_string('availabledate','assignment'),'title-time');
+            echo $OUTPUT->box(userdate($qv->timeavailable),'data-time');
         }
         if ($qv->timedue) {
-            echo '<div class="title-time">'.get_string('duedate','assignment').': </div>';
-            echo '<div class="data-time">'.userdate($qv->timedue).'</div>';
+            echo $OUTPUT->box(get_string('duedate','assignment'),'title-time');
+            echo $OUTPUT->box(userdate($qv->timedue),'data-time');
         }
         echo $OUTPUT->box_end();
     }
@@ -226,6 +228,7 @@ class qv_package_file_info extends file_info_stored {
 				
 			//Content out of date or updating on demand
 			if($full || $newhash != $qv->sha1hash){
+				echo 'EXTRACT';
 				// now extract files
 				$fs->delete_area_files($context->id, 'mod_qv', 'content');
 
@@ -262,16 +265,16 @@ class qv_package_file_info extends file_info_stored {
             // TODO: Where it's necessary to check maxattemps
             $assignment = qv_get_assignment($qv);
             $qv_full_url = qv_get_full_url($qv, $assignment, $user->id, "$user->firstname%20$user->lastname");
-            if ($qv->target=='self'){
-                $qvwidth=$qv->width!=''?$qv->width:'99%';
-                $qvheight=$qv->height!=''?$qv->height:'400';
-                echo "<iframe src='$qv_full_url' title='Quaderns Virtuals' width='$qvwidth' height='$qvheight'></iframe>";
+            if ($qv->target == 'self'){
+                $qvwidth = empty($qv->width)?'99%':$qv->width;
+                $qvheight= empty($qv->height)?'400':$qv->height;
+                echo '<iframe src="'.$qv_full_url.'" title="Quaderns Virtuals" width="'.$qvwidth.'" height="'.$qvheight.'"></iframe>';
             } else {
                 $PAGE->requires->js('/mod/qv/qv.js');
-                $fullscreen=$qv->width==''||$qv->width=='100%'||$qv->height==''?'true':'false';
-                echo "<a href='#' onclick='openpopupName(\"$qv_full_url\",\"toolbar=no,status=no,scrollbars=yes,resizable=yes,width=$qv->width,height=$qv->height\",$fullscreen);'>";//Albert
-                print_string("start", "qv");
-                echo "</a><br/>";
+                $fullscreen = empty($qv->width)||$qv->width=='100%'||empty($qv->height)?'true':'false';
+				$javascript = "openpopupName('$qv_full_url','toolbar=no,status=no,scrollbars=yes,resizable=yes,width=$qv->width,height=$qv->height',$fullscreen);";
+                
+                echo '<a href="#" onclick="'.$javascript.'">'.get_string('start', 'qv').'</a><br/>';
             }
             qv_view_dates($qv, $context, $timenow);            
         }
@@ -297,7 +300,7 @@ class qv_package_file_info extends file_info_stored {
         $submitted = '';
         $urlbase = "{$CFG->wwwroot}/mod/qv/";
 
-/*      $context = get_context_instance(CONTEXT_MODULE,$this->cm->id);
+/*      $context = context_module::instance($this->cm->id);
         if (has_capability('mod/qv:grade', $context)) {
             if ($allgroups and has_capability('moodle/site:accessallgroups', $context)) {
                 $group = 0;
@@ -522,17 +525,19 @@ class qv_package_file_info extends file_info_stored {
       return $section_summary;
     }
 
-	function qv_get_url($qv){
+	function qv_get_url($qv, $context = false){
         global $CFG, $DB;
         
         $url = '';
         if ($qv->sha1hash == QV_HASH_ONLINE) {
             $url = $qv->reference;
         } else {
-			if(qv_extract_package($qv,true)){
-				$cm = get_coursemodule_from_instance('qv', $qv->id);
-				$qv->cmid = $cm->id;
-				$context = context_module::instance($cm->id);
+			if(qv_extract_package($qv)){
+				if(!$context){
+					$cm = get_coursemodule_from_instance('qv', $qv->id);
+					$qv->cmid = $cm->id;
+					$context = context_module::instance($cm->id);
+				}
 				$fs = get_file_storage();
 				$indexfile = $fs->get_file($context->id, 'mod_qv', 'content', 0, '/html/', 'index.htm');
 				if($indexfile){
@@ -560,26 +565,61 @@ class qv_package_file_info extends file_info_stored {
     */
     function qv_get_full_url($qv, $assignment, $userid, $fullname,$isteacher=false){
 		global $CFG;
+		
+		if (!isset($assignment->id)) return false;
 
-		$qv_url = qv_get_url($qv);
+		$cm = get_coursemodule_from_instance('qv', $qv->id);
+		$qv->cmid = $cm->id;
+		$context = context_module::instance($cm->id);
+		$qv_url = qv_get_url($qv,$context);
 
-		$params = "";
-		/*
-		$qv_file = $qv_url;
-		$last=strrpos($qv_file, "/html/");
-		if ($last<strlen($qv_file)){
-			$base_file=substr($qv_file, 0, $last+1);
-			if (!(qv_exists_url($base_file."html/appl/qv_local.jar"))) $params.="&appl=$CFG->qv_qvdistplugin_appl";
-			if (!(qv_exists_url($base_file."html/css/generic.css"))) $params.="&css=$CFG->qv_qvdistplugin_css";
-			if (!(qv_exists_url($base_file."html/scripts/qv_local.js"))) $params.="&js=$CFG->qv_qvdistplugin_scripts";
-		}*/
-		if (isset($assignment->id)){
-			$qv_url.= (strpos($qv_url, "?") === false) ? '?' : '&';
-			$params = "server=".$CFG->wwwroot."/mod/qv/action/beans.php&assignmentid=$assignment->id&userid=$userid&fullname=$fullname&skin=$qv->skin&lang=$qv->assessmentlang&showinteraction=$qv->showinteraction&showcorrection=$qv->showcorrection&order_sections=$qv->ordersections&order_items=$qv->orderitems".($isteacher?"&userview=teacher":"").(($assignment->sectionorder>0 && $qv->ordersections==1)?"&section_order=$assignment->sectionorder":"").(($assignment->itemorder>0 && $qv->orderitems==1)?"&item_order=$assignment->itemorder":"").$params;
-			$fullurl = $qv_url.$params;
-			return $fullurl;
+		if(!$qv_url) return false;
+		
+		$params = array();
+		$params['server'] = $CFG->wwwroot.'/mod/qv/action/beans.php';
+		$params['assignmentid'] = $assignment->id;
+		$params['userid'] = $userid;
+		$params['fullname'] = $fullname;
+		$params['skin'] = $qv->skin;
+		$params['lang'] = $qv->assessmentlang;
+		$params['showinteraction'] = $qv->showinteraction;
+		$params['showcorrection'] = $qv->showcorrection;
+		$params['order_sections'] = $qv->ordersections;
+		$params['order_items'] = $qv->orderitems;
+		if($isteacher){
+			$params['userview'] = 'teacher';
 		}
-		return "";
+		if($assignment->sectionorder>0 && $qv->ordersections==1){
+			$params['section_order'] = $assignment->sectionorder;
+		}
+		if($assignment->itemorder>0 && $qv->orderitems==1){
+			$params['item_order'] = $assignment->itemorder;
+		}
+		
+		if ($qv->sha1hash != QV_HASH_ONLINE) {
+			$fs = get_file_storage();
+			if(!$fs->get_file($context->id, 'mod_qv', 'content', 0, '/html/appl/', 'qv_local.jar'))
+				$params['appl'] = $CFG->qv_qvdistplugin_appl;
+			if(!$fs->get_file($context->id, 'mod_qv', 'content', 0, '/html/css/', 'generic.css'))
+				$params['css'] = $CFG->qv_qvdistplugin_css;
+			if(!$fs->get_file($context->id, 'mod_qv', 'content', 0, '/html/scripts/', 'qv_local.js'))
+				$params['js'] = $CFG->qv_qvdistplugin_scripts;
+		} else {
+			$last = strrpos($qv_url, '/html/');
+			if ($last < strlen($qv_url)){
+				$base_file = substr($qv_url, 0, $last+1);
+				if (!qv_exists_url($base_file.'html/appl/qv_local.jar'))
+					$params['appl'] = $CFG->qv_qvdistplugin_appl;
+				if (!qv_exists_url($base_file.'html/css/generic.css'))
+					$params['css'] = $CFG->qv_qvdistplugin_css;
+				if (!qv_exists_url($base_file.'html/scripts/qv_local.js'))
+					$params['js'] = $CFG->qv_qvdistplugin_scripts;
+			}
+		}
+
+		$url = new moodle_url($qv_url,$params);
+
+		return $url->out();
     }    
 
     /**
