@@ -70,7 +70,7 @@ qv_view_header($qv, $cm, $course);
 qv_view_intro($qv, $cm);
 
 $action = optional_param('action', '', PARAM_TEXT);
-if (has_capability('mod/qv:grade', $context, $USER->id, false)){    
+if (has_capability('mod/qv:grade', $context, $USER->id, true)){    
     if ($action == 'preview'){
         qv_view_applet($qv, $context, true);
     } else{
@@ -82,4 +82,4 @@ if (has_capability('mod/qv:grade', $context, $USER->id, false)){
     qv_view_assessment($qv, $USER, $context, $cm, $course);    
 }
 
-qv_view_footer();
+echo $OUTPUT->footer();

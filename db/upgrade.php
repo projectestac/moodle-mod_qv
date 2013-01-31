@@ -163,6 +163,38 @@ function xmldb_qv_upgrade($oldversion=0) {
         // qv savepoint reached
         upgrade_mod_savepoint(true, 2012112101, 'qv');
     }
-    
+
+//===== 2.2 upgrade line ======//
+
+    if ($oldversion < 2013013102) {
+
+        // Rename field assessmenturl on table qv to reference
+        $table = new xmldb_table('qv');
+        $field = new xmldb_field('assessmenturl', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'introformat');
+        $dbman->rename_field($table, $field, 'reference');
+
+        // Define field sha1hash to be added to qv
+        $field = new xmldb_field('sha1hash', XMLDB_TYPE_CHAR, '40', null, null, null, null, 'height');
+
+        // Conditionally launch add field sha1hash
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // qv savepoint reached
+        upgrade_mod_savepoint(true, 2013013102, 'qv');
+    }
+
+
+
+    /* MIGRATION OF THE FILES
+	$qv = $DB->get_record('qv', array('id'=>$cm->instance), 'id, legacyfiles', MUST_EXIST);
+	if (!$file = qvlib_try_file_migration('/'.$relativepath, $cm->id, $cm->course, 'mod_qv', 'content', 0)) {
+		return false;
+	}
+	// file migrate - update flag
+	$resource->legacyfileslast = time();
+	$DB->update_record('resource', $resource); 
+	*/
     return true;
 }

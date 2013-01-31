@@ -37,6 +37,8 @@ define('QV_DEFAULT_DISTAPPL', 'http://clic.xtec.cat/qv_viewer/dist/html/appl/');
 define('QV_DEFAULT_DISTSCRIPTS', 'http://clic.xtec.cat/qv_viewer/dist/html/scripts/');
 define('QV_DEFAULT_DISTCSS', 'http://clic.xtec.cat/qv_viewer/dist/html/css/');
 define('QV_DEFAULT_SKINS', 'default,infantil,formal');
+define('QV_HASH_UPDATE', 'update');
+define('QV_HASH_ONLINE', 'online');
 
 /*
 if (!isset($CFG->qv_distpluginappl)) {
@@ -97,6 +99,7 @@ function qv_supports($feature) {
     }
 }
 
+
 /**
  * Saves a new instance of the qv into the database
  *
@@ -118,9 +121,10 @@ function qv_add_instance(stdClass $qv, mod_qv_mod_form $mform = null) {
     $qv->timecreated = time();
 
     if ($mform->get_data()->filetype === QV_FILE_TYPE_LOCAL) {
-        $qvassessmenturlurl = $mform->get_data()->qvfile;
+        $qv->reference = $mform->get_data()->qvfile;
     } else{
-        $qv->assessmenturl = $qv->qvurl;
+        $qv->reference = $qv->qvurl;
+        $qv->sha1hash = QV_HASH_ONLINE;
     }    
 
     $qv->id = $DB->insert_record('qv', $qv);
@@ -130,7 +134,7 @@ function qv_add_instance(stdClass $qv, mod_qv_mod_form $mform = null) {
     // Store the JClic and verify
     if ($mform->get_data()->filetype === QV_FILE_TYPE_LOCAL) {
         $filename = qv_set_mainfile($qv);
-        $qv->assessmenturl = $filename;
+        $qv->reference = $filename;
         $DB->update_record('qv', $qv);
     }
     
@@ -170,16 +174,19 @@ function qv_update_instance(stdClass $qv, mod_qv_mod_form $mform = null) {
 
     $qv->timemodified = time();
     $qv->id = $qv->instance;
-    if ($mform->get_data()->filetype === QV_FILE_TYPE_LOCAL) {
-        $qv->assessmenturl = $mform->get_data()->qvfile;
+    $filetype = $mform->get_data()->filetype;
+    if ($filetype === QV_FILE_TYPE_LOCAL) {
+        $qv->reference = $mform->get_data()->qvfile;
     } else{
-        $qv->assessmenturl = $qv->qvurl;
+        $qv->reference = $qv->qvurl;
+        $qv->sha1hash = QV_HASH_ONLINE;
     }
     
     $result = $DB->update_record('qv', $qv);
-    if ($result && $mform->get_data()->filetype === QV_FILE_TYPE_LOCAL) {
+
+    if ($filetype === QV_FILE_TYPE_LOCAL) {
         $filename = qv_set_mainfile($qv);
-        $qv->assessmenturl = $filename;
+        $qv->reference = $filename;
         $result = $DB->update_record('qv', $qv);
     }
     
@@ -274,6 +281,16 @@ function qv_delete_instance($id) {
     if ($result && !qv_grade_item_delete($qv)){
         $result = false;
     }
+
+    //Delete files
+	if ($result){
+		$fs = get_file_storage();
+		$result = $fs->delete_area_files($context->id, 'mod_qv', 'content');
+	}
+
+	if ($result){
+		$result = $fs->delete_area_files($context->id, 'mod_qv', 'package');
+	}
 
     return $result;
 }
@@ -610,7 +627,9 @@ function qv_update_grades(stdClass $qv, $userid = 0, $nullifnone=true) {
  */
 function qv_get_file_areas($course, $cm, $context) {
     return array(
-        'content'      => get_string('urledit',  'qv')
+        'content'      => get_string('areacontent',  'qv'),
+        'package'      => get_string('areapackage',  'qv')
+        
     );
 }
 
@@ -634,10 +653,13 @@ function qv_get_file_info($browser, $areas, $course, $cm, $context, $filearea, $
         // students can not peak here!
         return null;
     }
-
+    
+    // no writing for now!
+    
     $fs = get_file_storage();
 
-    if ($filearea === 'content') {
+	if ($filearea === 'content') {
+
         $filepath = is_null($filepath) ? '/' : $filepath;
         $filename = is_null($filename) ? '.' : $filename;
 
@@ -650,11 +672,28 @@ function qv_get_file_info($browser, $areas, $course, $cm, $context, $filearea, $
                 return null;
             }
         }
+        require_once("$CFG->dirroot/mod/qv/locallib.php");
+        return new qv_package_file_info($browser, $context, $storedfile, $urlbase, $areas[$filearea], true, true, false, false);
+
+    } else if ($filearea === 'package') {
+        $filepath = is_null($filepath) ? '/' : $filepath;
+        $filename = is_null($filename) ? '.' : $filename;
+
+        $urlbase = $CFG->wwwroot.'/pluginfile.php';
+        if (!$storedfile = $fs->get_file($context->id, 'mod_qv', 'package', 0, $filepath, $filename)) {
+            if ($filepath === '/' and $filename === '.') {
+                $storedfile = new virtual_root_file($context->id, 'mod_qv', 'package', 0);
+            } else {
+                // not found
+                return null;
+            }
+        }
         return new file_info_stored($browser, $context, $storedfile, $urlbase, $areas[$filearea], false, true, false, false);
     }
+    
     // note: qv_intro handled in file_browser automatically
 
-    return null;
+    return false;
 }
 
 
@@ -669,47 +708,50 @@ function qv_get_file_info($browser, $areas, $course, $cm, $context, $filearea, $
  * @param bool $forcedownload
  * @return void this should never return to the caller
  */
-function qv_pluginfile($course, $cm, $context, $filearea, array $args, $forcedownload) {
+function mod_qv_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload=false, array $options=array()) {
     global $DB, $CFG;
-
+    
     if ($context->contextlevel != CONTEXT_MODULE) {
-        send_file_not_found();
+        return false;
     }
 
     require_login($course, true, $cm);
+
+	$lifetime = isset($CFG->filelifetime) ? $CFG->filelifetime : 86400;
     
-    if (!has_capability('mod/qv:view', $context)) {
+    if ($filearea === 'content') {
+		if (!has_capability('mod/qv:view', $context)) {
+			return false;
+		}
+        $revision = (int)array_shift($args); // prevents caching problems - ignored here
+        $relativepath = implode('/', $args);
+        $fullpath = "/$context->id/mod_qv/content/0/$relativepath";
+    } else if ($filearea === 'package') {
+        if (!has_capability('moodle/course:manageactivities', $context)) {
+            return false;
+        }
+        $revision = (int)array_shift($args); // prevents caching problems - ignored here
+        $relativepath = implode('/', $args);
+        $fullpath = "/$context->id/mod_qv/package/0/$relativepath";
+        $lifetime = 0; // no caching here
+    } else {
         return false;
     }
-
-    if ($filearea !== 'content') {
-        // intro is handled automatically in pluginfile.php
-        return false;
-    }
-
-    array_shift($args); // ignore revision - designed to prevent caching problems only
 
     $fs = get_file_storage();
-    $relativepath = implode('/', $args);
-    $fullpath = rtrim("/$context->id/mod_qv/$filearea/0/$relativepath", '/');
-    do {
-        if ($file = $fs->get_file_by_hash(sha1($fullpath))) {
-            break;
+    
+	if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
+		if ($filearea === 'content') { //return file not found straight away to improve performance.
+            send_header_404();
+            die;
         }
-/*            
-            $qv = $DB->get_record('qv', array('id'=>$cm->instance), 'id, legacyfiles', MUST_EXIST);
-            if (!$file = qvlib_try_file_migration('/'.$relativepath, $cm->id, $cm->course, 'mod_qv', 'content', 0)) {
-                return false;
-            }
-            // file migrate - update flag
-            $resource->legacyfileslast = time();
-            $DB->update_record('resource', $resource); 
- */
-    } while (false);
+        return false;
+	}
 
     // finally send the file
-    send_stored_file($file, 86400, 0, $forcedownload);    
+    send_stored_file($file, $lifetime, 0,  false, $options); //DO NOT FORCE DOWNLOAD
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Navigation API                                                             //

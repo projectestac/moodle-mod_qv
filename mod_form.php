@@ -138,7 +138,7 @@ class mod_qv_mod_form extends moodleform_mod {
     function data_preprocessing(&$default_values) {
         if ($this->current->instance) {
             $draftitemid = file_get_submitted_draft_itemid('qvfile');
-            file_prepare_draft_area($draftitemid, $this->context->id, 'mod_qv', 'content', 0, qv_get_filemanager_options());
+            file_prepare_draft_area($draftitemid, $this->context->id, 'mod_qv', 'package', 0, qv_get_filemanager_options());
             $default_values['qvfile'] = $draftitemid;
         } 
     }
@@ -155,18 +155,18 @@ class mod_qv_mod_form extends moodleform_mod {
         }
         
         $type = $data['filetype'];
-        if ($type === QV_FILE_TYPE_LOCAL) {
-            $usercontext = get_context_instance(CONTEXT_USER, $USER->id);
-            $fs = get_file_storage();
-            if (!$files = $fs->get_area_files($usercontext->id, 'user', 'draft', $data['qvfile'], 'sortorder, id', false)) {
-                $errors['qvfile'] = get_string('required');
-            } else{
-                $file = reset($files);
-                $filename = $file->get_filename();
-                if (!qv_is_valid_file($filename)){
-                    $errors['qvfile'] = get_string('invalidqvfile', 'qv');
-                }
-            }
+	if ($type === QV_FILE_TYPE_LOCAL) {
+		$usercontext = context_user::instance($USER->id);
+		$fs = get_file_storage();
+		if (!$files = $fs->get_area_files($usercontext->id, 'user', 'draft', $data['qvfile'], 'sortorder, id', false)) {
+		    $errors['qvfile'] = get_string('required');
+		} /* else{
+                	$file = reset($files);
+	                $filename = $file->get_filename();
+	                if (!qv_is_valid_file($filename)){
+        	            $errors['qvfile'] = get_string('invalidqvfile', 'qv');
+        	        }
+        	    } */
         } else if ($type === QV_FILE_TYPE_EXTERNAL) {
             $reference = $data['qvurl'];
             if (!qv_is_valid_external_url($reference)) {

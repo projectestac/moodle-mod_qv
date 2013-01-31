@@ -60,19 +60,21 @@ function qv_migrate_files() {
                 $qvfile = clean_param($qv->assessmenturl, PARAM_PATH);
                 $pathnamehash = sha1("/$coursecontext->id/course/legacy/0/$qvfile");
                 if ($file = $fs->get_file_by_hash($pathnamehash)) {
-                    $file_record = array('contextid'=>$context->id, 'component'=>'mod_qv', 'filearea'=>'content',
+                    $file_record = array('contextid'=>$context->id, 'component'=>'mod_qv', 'filearea'=>'package',
                                          'itemid'=>0, 'filepath'=>'/');
                     try {
                         $fs->create_file_from_storedfile($file_record, $file);
                     } catch (Exception $x) {
                         // ignore any errors, we can not do much anyway
                     }
-                    $qv->assessmenturl = $pathnamehash;
+                    $qv->reference = $pathnamehash;
                 } else {
-                    $qv->assessmenturl = '';
+                    $qv->reference = '';
                 }
-                $DB->update_record('qv', $qv);
-            }
+            } else {
+				$qv->sha1hash = QV_HASH_ONLINE;
+			}
+			$DB->update_record('qv', $qv);
         }
     }
     $rs->close();

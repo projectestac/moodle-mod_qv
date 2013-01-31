@@ -30,6 +30,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$string['areacontent'] = 'Content files';
+$string['areapackage'] = 'Package file';
 $string['assessmentlang'] = 'Language';
 $string['assessmentmaxdeliver'] = 'Maximum number of deliveries';
 $string['assessmentmaxgrade'] = 'Score that must be achieved';
@@ -103,13 +105,13 @@ $string['filetype_help'] = 'This setting determines how the QV activity is inclu
 * External URL - Enables a URL to be specified. Note: The URL must start with http(s) or www and contain a valid HTML QV file.';
 $string['filetypeexternal'] = 'External URL';
 $string['filetypelocal'] = 'Uploaded QV';
-$string['invalidqvfile'] = 'Invalid QV specified. It must have the ".htm" extension.';
+$string['invalidqvfile'] = 'Invalid QV specified. It must have the ".zip" extension.';
 $string['invalidurl'] = 'Invalid URL specified. It must start with http(s).';
 $string['qv'] = 'QV';
 $string['qvurl'] = 'URL';
 $string['qvurl_help'] = 'This setting enables a URL for the QV to be specified, rather than choosing a file via the file picker.';
 $string['qvfile'] = 'QV file';
-$string['qvfile_help'] = 'The index.htm file containing the QV.';
+$string['qvfile_help'] = 'The zip file containing the QV.';
 $string['notopenyet'] = 'Sorry, this activity is not available until {$a}';
 $string['pluginadministration'] = 'QV administration';
 $string['pluginname'] = 'QV';
