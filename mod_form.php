@@ -73,7 +73,7 @@ class mod_qv_mod_form extends moodleform_mod {
 
         $mform->addElement('select', 'filetype', get_string('filetype', 'qv'), qv_get_file_types());
         $mform->addHelpButton('filetype', 'filetype', 'qv');
-        $mform->addElement('text', 'qvurl', get_string('qvurl', 'qv'), array('size'=>60));
+        $mform->addElement('text', 'qvurl', get_string('url'), array('size'=>60));
         $mform->setType('qvurl', PARAM_RAW);
         $mform->addHelpButton('qvurl', 'qvurl', 'qv');
         $mform->disabledIf('qvurl', 'filetype', 'eq', QV_FILE_TYPE_LOCAL);
@@ -82,7 +82,7 @@ class mod_qv_mod_form extends moodleform_mod {
         $mform->addHelpButton('qvfile', 'urledit', 'qv');
         $mform->disabledIf('qvfile', 'filetype', 'noteq', QV_FILE_TYPE_LOCAL);
         
-        $options = qv_get_languages();
+        $options = get_string_manager()->get_list_of_translations();
         $mform->addElement('select', 'assessmentlang', get_string('assessmentlang', 'qv'), $options);
         $mform->setDefault('assessmentlang', substr($CFG->lang, 0, -5));
 
@@ -155,27 +155,21 @@ class mod_qv_mod_form extends moodleform_mod {
         }
         
         $type = $data['filetype'];
-	if ($type === QV_FILE_TYPE_LOCAL) {
-		$usercontext = context_user::instance($USER->id);
-		$fs = get_file_storage();
-		if (!$files = $fs->get_area_files($usercontext->id, 'user', 'draft', $data['qvfile'], 'sortorder, id', false)) {
-		    $errors['qvfile'] = get_string('required');
-		} /* else{
-                	$file = reset($files);
-	                $filename = $file->get_filename();
-	                if (!qv_is_valid_file($filename)){
-        	            $errors['qvfile'] = get_string('invalidqvfile', 'qv');
-        	        }
-        	    } */
-        } else if ($type === QV_FILE_TYPE_EXTERNAL) {
-            $reference = $data['qvurl'];
-            if (!qv_is_valid_external_url($reference)) {
-                $errors['qvurl'] = get_string('invalidurl', 'qv');
-            }
-        }
+		if ($type === QV_FILE_TYPE_LOCAL) {
+			$usercontext = context_user::instance($USER->id);
+			$fs = get_file_storage();
+			if (!$files = $fs->get_area_files($usercontext->id, 'user', 'draft', $data['qvfile'], 'sortorder, id', false)) {
+				$errors['qvfile'] = get_string('required');
+			}
+		} else if ($type === QV_FILE_TYPE_EXTERNAL) {
+			$reference = $data['qvurl'];
+			if (!qv_is_valid_external_url($reference)) {
+				$errors['qvurl'] = get_string('invalidurl', 'qv');
+			}
+		}
 
-        return $errors;
-    }    
+		return $errors;
+   }    
     
     // Need to translate the "url" field
     function set_data($default_values) {

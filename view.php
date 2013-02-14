@@ -28,58 +28,62 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
-require_once(dirname(__FILE__).'/locallib.php');
-require_once($CFG->libdir.'/completionlib.php');
+require_once('../../config.php');
+require_once('locallib.php');
+require_once($CFG->libdir . '/completionlib.php');
 
-
-$id = optional_param('id', 0, PARAM_INT); // course_module ID, or
-$n  = optional_param('n', 0, PARAM_INT);  // qv instance ID - it should be named as the first character of the module
+$id = optional_param('id', 0, PARAM_INT);  // Course Module ID
+$q  = optional_param('q', 0, PARAM_INT);   // qv instance ID - it should be named as the first character of the module
 
 if ($id) {
     $cm         = get_coursemodule_from_id('qv', $id, 0, false, MUST_EXIST);
     $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
-    $qv         = $DB->get_record('qv', array('id' => $cm->instance), '*', MUST_EXIST);
-} elseif ($n) {
-    $qv         = $DB->get_record('qv', array('id' => $n), '*', MUST_EXIST);
+    $record         = $DB->get_record('qv', array('id' => $cm->instance), '*', MUST_EXIST);
+} else if ($q) {
+    $record         = $DB->get_record('qv', array('id' => $q), '*', MUST_EXIST);
     $course     = $DB->get_record('course', array('id' => $qv->course), '*', MUST_EXIST);
     $cm         = get_coursemodule_from_instance('qv', $qv->id, $course->id, false, MUST_EXIST);
 } else {
     print_error('You must specify a course_module ID or an instance ID');
 }
 
+$qv = new qv();
+$qv->load_record($record);
+
+$PAGE->set_url('/mod/qv/view.php', array('id' => $cm->id));
 require_login($course, true, $cm);
-$context = context_module::instance($cm->id);
-require_capability('mod/qv:view', $context);
+
+require_capability('mod/qv:view', $qv->context);
 
 add_to_log($course->id, 'qv', 'view', "view.php?id={$cm->id}", $qv->name, $cm->id);
 
 /// Print the page header
-
-$PAGE->set_url('/mod/qv/view.php', array('id' => $cm->id));
 $PAGE->set_title(format_string($qv->name));
 $PAGE->set_heading(format_string($course->fullname));
-$PAGE->set_context($context);
+$PAGE->set_context($qv->context);
 
 
 // Mark viewed if required
 $completion = new completion_info($course);
 $completion->set_module_viewed($cm);
 
-qv_view_header($qv, $cm, $course);
-qv_view_intro($qv, $cm);
+echo $OUTPUT->header();
+
+groups_print_activity_menu($cm, $CFG->wwwroot . '/mod/qv/view.php?id=' . $cm->id);
+
+$intro = format_module_intro('qv', $qv, $cm->id);
+echo $OUTPUT->box($intro, 'generalbox boxaligncenter','intro');
 
 $action = optional_param('action', '', PARAM_TEXT);
-if (has_capability('mod/qv:grade', $context, $USER->id, true)){    
+if (has_capability('mod/qv:grade', $qv->context, $USER->id, true)){    
     if ($action == 'preview'){
-        qv_view_applet($qv, $context, true);
+        echo $qv->view_assessment($USER, true);
     } else{
-        qv_view_dates($qv, $cm);
-        qv_print_results_table($qv, $context, $cm, $course, $action);
+        echo $qv->view_dates();
+        echo $qv->print_results_table($course, $action);
     }
-    
 } else{
-    qv_view_assessment($qv, $USER, $context, $cm, $course);    
+    echo $qv->view_assessment($USER);    
 }
 
 echo $OUTPUT->footer();

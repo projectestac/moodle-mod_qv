@@ -60,7 +60,7 @@
         <FIELD NAME="scores" TYPE="text" NOTNULL="false" SEQUENCE="false" PREVIOUS="responses" NEXT="pending_scores"/>
         <FIELD NAME="pending_scores" TYPE="text" NOTNULL="false" SEQUENCE="false" PREVIOUS="scores" NEXT="attempts"/>
         <FIELD NAME="attempts" TYPE="int" LENGTH="6" NOTNULL="false" DEFAULT="0" SEQUENCE="false" PREVIOUS="pending_scores" NEXT="state"/>
-        <FIELD NAME="state" TYPE="int" LENGTH="1" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="-1 no_iniciat;0 iniciat; 1 lliurat;2 corregit" PREVIOUS="attempts" NEXT="time"/>
+        <FIELD NAME="state" TYPE="int" LENGTH="1" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="-1 not_started;0 started; 1 delivered;2 corrected" PREVIOUS="attempts" NEXT="time"/>
         <FIELD NAME="time" TYPE="char" LENGTH="8" NOTNULL="true" DEFAULT="00:00:00" SEQUENCE="false" PREVIOUS="state"/>
       </FIELDS>
       <KEYS>
@@ -71,7 +71,7 @@
     <TABLE NAME="qv_messages" COMMENT="Stores user messages for each assignment" PREVIOUS="qv_sections" NEXT="qv_messages_read">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="sid"/>
-        <FIELD NAME="sid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="id" NEXT="itemid"/>
+        <FIELD NAME="sid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" COMMENT="sectionid" PREVIOUS="id" NEXT="itemid"/>
         <FIELD NAME="itemid" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="sid" NEXT="userid"/>
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="itemid" NEXT="created"/>
         <FIELD NAME="created" TYPE="int" LENGTH="10" NOTNULL="false" UNSIGNED="true" SEQUENCE="false" PREVIOUS="userid" NEXT="message"/>
@@ -85,7 +85,7 @@
     <TABLE NAME="qv_messages_read" COMMENT="Stores user control access to messages" PREVIOUS="qv_messages" >
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="sid"/>
-        <FIELD NAME="sid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="id" NEXT="userid"/>
+        <FIELD NAME="sid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" COMMENT="sectionid" PREVIOUS="id" NEXT="userid"/>
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="sid" NEXT="timereaded"/>
         <FIELD NAME="timereaded" TYPE="int" LENGTH="10" NOTNULL="false" UNSIGNED="true" SEQUENCE="false" PREVIOUS="userid" />
       </FIELDS>

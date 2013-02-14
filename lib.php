@@ -118,46 +118,16 @@ function qv_supports($feature) {
 function qv_add_instance(stdClass $qv, mod_qv_mod_form $mform = null) {
     global $DB;
         
-    $cmid = $qv->coursemodule;
     $qv->timecreated = time();
-
-    if ($mform->get_data()->filetype === QV_FILE_TYPE_LOCAL) {
-        $qv->reference = $mform->get_data()->qvfile;
-    } else{
-        $qv->reference = $qv->qvurl;
-        $qv->sha1hash = QV_HASH_ONLINE;
-    }    
+	$filetype = $mform->get_data()->filetype;
+    qv_before_add_or_update($qv, $filetype, $mform);
 
     $qv->id = $DB->insert_record('qv', $qv);
-    // we need to use context now, so we need to make sure all needed info is already in db
-    $DB->set_field('course_modules', 'instance', $qv->id, array('id'=>$cmid));
     
-    // Store the JClic and verify
-    if ($mform->get_data()->filetype === QV_FILE_TYPE_LOCAL) {
-        $filename = qv_set_mainfile($qv);
-        $qv->reference = $filename;
-        $DB->update_record('qv', $qv);
-    }
-    
-    if ($qv->timedue) {
-        $event = new stdClass();
-        $event->name        = $qv->name;
-        $event->description = format_module_intro('qv', $qv, $qv->coursemodule);
-        $event->courseid    = $qv->course;
-        $event->groupid     = 0;
-        $event->userid      = 0;
-        $event->modulename  = 'qv';
-        $event->instance    = $qv->id;
-        $event->eventtype   = 'due';
-        $event->timestart   = $qv->timedue;
-        $event->timeduration = 0;
-
-        calendar_event::create($event);
-    }
-    qv_grade_item_update($qv);
-    
+	qv_after_add_or_update($qv, $filetype);
     return $qv->id;    
 }
+
 
 /**
  * Updates an instance of the qv in the database
@@ -176,22 +146,44 @@ function qv_update_instance(stdClass $qv, mod_qv_mod_form $mform = null) {
     $qv->timemodified = time();
     $qv->id = $qv->instance;
     $filetype = $mform->get_data()->filetype;
-    if ($filetype === QV_FILE_TYPE_LOCAL) {
-        $qv->reference = $mform->get_data()->qvfile;
-    } else{
-        $qv->reference = $qv->qvurl;
-        $qv->sha1hash = QV_HASH_ONLINE;
-    }
+    qv_before_add_or_update($qv, $filetype, $mform);
     
     $result = $DB->update_record('qv', $qv);
 
-    if ($filetype === QV_FILE_TYPE_LOCAL) {
-        $filename = qv_set_mainfile($qv);
+	qv_after_add_or_update($qv, $filetype);
+    return true;
+}
+
+function qv_before_add_or_update(&$qv, $filetype, $mform){
+	if ($filetype === QV_FILE_TYPE_LOCAL) {
+        $qv->reference = $mform->get_data()->qvfile;
+    } else{
+        $qv->reference = $qv->qvurl;
+    }  
+}
+
+function qv_after_add_or_update($qv, $filetype){
+	global $DB;
+
+    // We need to use context now, so we need to make sure all needed info is already in db.
+    $cmid = $qv->coursemodule;
+	$DB->set_field('course_modules', 'instance', $qv->id, array('id'=>$cmid));
+	$context = context_module::instance($cmid);
+	
+	$fs = get_file_storage();
+     
+	if ($filetype === QV_FILE_TYPE_LOCAL) {
+		$filename = qv_set_mainfile($qv);
         $qv->reference = $filename;
-        $result = $DB->update_record('qv', $qv);
-    }
-    
-    if ($result && $qv->timedue) {
+        $DB->update_record('qv', $qv);
+    } else {
+		$fs->delete_area_files($context->id, 'mod_qv', 'package');
+	}
+
+	//Erase content files to force regeneration
+	$fs->delete_area_files($context->id, 'mod_qv', 'content');
+
+    if ($qv->timedue) {
         $event = new stdClass();
         if ($event->id = $DB->get_field('event', 'id', array('modulename'=>'qv', 'instance'=>$qv->id))) {
             $event->name        = $qv->name;
@@ -219,13 +211,11 @@ function qv_update_instance(stdClass $qv, mod_qv_mod_form $mform = null) {
         $DB->delete_records('event', array('modulename'=>'qv', 'instance'=>$qv->id));
     }  
     
-    if ($result){
-        // get existing grade item
-        $result = qv_grade_item_update($qv);
-    }
-    
-    return $result;
+    // get existing grade item
+	qv_grade_item_update($qv);
+
 }
+
 
 /**
  * Removes an instance of the qv from the database
@@ -413,15 +403,15 @@ function qv_get_participants($qvid) {
     //Get students
     $students = $DB->get_records_sql("SELECT DISTINCT u.id, u.id as userid
                                  FROM {user} u,
-                                      {qv_sessions} js
-                                 WHERE js.qvid = ? and
-                                       u.id = js.user_id", array($qvid));
+                                      {qv_assignments} qa
+                                 WHERE qa.qvid = ? and
+                                       u.id = qa.userid", array($qvid));
     //Get teachers
     $teachers = $DB->get_records_sql("SELECT DISTINCT u.id, u.id as userid
                                  FROM {user} u,
-                                      {qv_sessions} js
-                                 WHERE js.qvid = ? and
-                                       u.id = js.user_id", array($qvid));
+                                      {qv_assignments} qa
+                                 WHERE qa.qvid = ? and
+                                       u.id = qa.user_id", array($qvid));
 
     //Add teachers to students
     if ($teachers) {
@@ -798,9 +788,9 @@ function qv_reset_gradebook($courseid) {
 
     $params = array('courseid'=>$courseid);
 
-    $sql = "SELECT j.*, cm.idnumber as cmidnumber, j.course as courseid
-              FROM {qv} j, {course_modules} cm, {modules} m
-             WHERE m.name='qv' AND m.id=cm.module AND cm.instance=j.id AND j.course=:courseid ";
+    $sql = "SELECT q.*, cm.idnumber as cmidnumber, q.course as courseid
+              FROM {qv} q, {course_modules} cm, {modules} m
+             WHERE m.name='qv' AND m.id=cm.module AND cm.instance=q.id AND j.course=:courseid ";
 
     if ($qvs = $DB->get_records_sql($sql, $params)) {
         foreach ($qvs as $qv) {
@@ -824,16 +814,12 @@ function qv_reset_userdata($data) {
  
     if (!empty($data->reset_qv_deleteallsessions)) {
         $params = array('courseid' => $data->courseid);
-        $select = 'session_id IN'
-            . " (SELECT s.session_id FROM {qv_sessions} s"
-            . " INNER JOIN {qv} j ON s.qvid = j.id"
-            . " WHERE j.course = :courseid)";
-        $DB->delete_records_select('qv_activities', $select, $params);
-
         $select = 'qvid IN'
-            . " (SELECT j.id FROM {qv} j"
-            . " WHERE j.course = :courseid)";
-        $DB->delete_records_select('qv_sessions', $select, $params);
+            . " (SELECT q.id FROM {qv} q"
+            . " WHERE q.course = :courseid)";
+        $DB->delete_records_select('qv_assignments', $select, $params);
+
+        //TODO: Delete sections and messages and message_read's
         
         // remove all grades from gradebook
         if (empty($data->reset_gradebook_grades)) {
