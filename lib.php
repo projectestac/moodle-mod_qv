@@ -109,7 +109,6 @@ function qv_supports($feature) {
  * will create a new instance and return the id number
  * of the new instance.
  * 
- * @todo: create event (when timedue added)
  *
  * @param object $qv An object from the form in mod_form.php
  * @param mod_qv_mod_form $mform
@@ -238,28 +237,7 @@ function qv_delete_instance($id) {
     
     // Delete any dependent records
     $result = true;
-    $rs =  $DB->get_records('qv_assignments', array('qvid' => $id));
-    foreach($rs as $assignment){
-      $sections =  $DB->get_records('qv_sections', array('assignmentid' => "$assignment->id"));
-      foreach($sections as $section){
-          if (!$DB->delete_records('qv_messages_read', array('sid' => "$section->id"))){
-              $result = false;
-              exit;
-          }
-          if (!$DB->delete_records('qv_messages', array('sid' => "$section->id"))){
-              $result = false;
-              exit;
-          }
-      }
-      if (!$DB->delete_records('qv_sections', array('assignmentid' => "$assignment->id"))){
-          $result = false;
-          exit;
-      }
-    }
-
-    if ($result && !$DB->delete_records('qv_assignments', array('qvid' => $id))){
-        $result = false;
-    }
+    qv_delete_instance_userdata($id);
 
     if ($result && !$DB->delete_records('qv', array('id' => $id))) {
         $result = false;
@@ -813,13 +791,10 @@ function qv_reset_userdata($data) {
     $status = array();
  
     if (!empty($data->reset_qv_deleteallsessions)) {
-        $params = array('courseid' => $data->courseid);
-        $select = 'qvid IN'
-            . " (SELECT q.id FROM {qv} q"
-            . " WHERE q.course = :courseid)";
-        $DB->delete_records_select('qv_assignments', $select, $params);
-
-        //TODO: Delete sections and messages and message_read's
+		$activities = $DB->get_fieldset_select('qv','id','course = :courseid',array('courseid'=>$data->courseid));
+		foreach($activities as $qvid){
+			qv_delete_instance_userdata($qvid);
+		}
         
         // remove all grades from gradebook
         if (empty($data->reset_gradebook_grades)) {
@@ -830,6 +805,20 @@ function qv_reset_userdata($data) {
     }
  
    return $status;
+}
+
+function qv_delete_instance_userdata($qvid){
+	global $DB;
+	$assignments =  $DB->get_fieldset_select('qv_assignments','id','qvid = :qvid', array('qvid' => $qvid));
+	foreach($assignments as $assid){
+		$sections =  $DB->get_fieldset_select('qv_sections','id','assignmentid = :assignmentid',  array('assignmentid' => $assid));
+		foreach($sections as $sid){
+			$DB->delete_records('qv_messages_read', array('sid' => $sid));
+			$DB->delete_records('qv_messages', array('sid' => $sid));
+		}
+		$DB->delete_records('qv_sections', array('assignmentid' => $assid));
+	}
+	$DB->delete_records('qv_assignments', array('qvid' => $qvid);
 }
 
 /**
