@@ -59,11 +59,11 @@ class backup_qv_activity_task extends backup_activity_task {
  
         // Link to the list of qvs
         $search="/(".$base."\/mod\/qv\/index.php\?id\=)([0-9]+)/";
-        $content= preg_replace($search, '$@JCLICINDEX*$2@$', $content);
+        $content= preg_replace($search, '$@QVINDEX*$2@$', $content);
  
         // Link to qv view by moduleid
         $search="/(".$base."\/mod\/qv\/view.php\?id\=)([0-9]+)/";
-        $content= preg_replace($search, '$@JCLICVIEWBYID*$2@$', $content);
+        $content= preg_replace($search, '$@QVVIEWBYID*$2@$', $content);
  
         return $content;
     }

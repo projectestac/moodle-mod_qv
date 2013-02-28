@@ -96,6 +96,6 @@ class restore_qv_activity_structure_step extends restore_activity_structure_step
     protected function after_execute() {
         // Add qv related files, no need to match by itemname (just internally handled context)
         $this->add_related_files('mod_qv', 'intro', null);
-        $this->add_related_files('mod_qv', 'content', null);
+        $this->add_related_files('mod_qv', 'package', null);
     }
 }

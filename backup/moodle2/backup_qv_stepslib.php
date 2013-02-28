@@ -75,7 +75,7 @@ class backup_qv_activity_structure_step extends backup_activity_structure_step {
 
         // Define file annotations
         $qv->annotate_files('mod_qv', 'intro', null);     // This file area hasn't itemid
-        $qv->annotate_files('mod_qv', 'content', null);   // This file area hasn't itemid
+        $qv->annotate_files('mod_qv', 'package', null);   // This file area hasn't itemid
  
         // Return the root element (qv), wrapped into standard activity structure
         return $this->prepare_activity_structure($qv);

@@ -51,11 +51,11 @@ class moodle1_mod_qv_handler extends moodle1_mod_handler {
     public function get_paths() {
         return array(
             new convert_path(
-                'qv', '/MOODLE_BACKUP/COURSE/MODULES/MOD/JCLIC',
+                'qv', '/MOODLE_BACKUP/COURSE/MODULES/MOD/QV',
                 array(
                     'renamefields' => array(
                         'description' => 'intro',
-                        'format' => 'introformat',
+                        'assessmenturl' => 'reference'
                     ),
                     'newfields' => array(
                         'introformat' => 0,
@@ -69,10 +69,11 @@ class moodle1_mod_qv_handler extends moodle1_mod_handler {
     }
  
     /**
-     * This is executed every time we have one /MOODLE_BACKUP/COURSE/MODULES/MOD/JCLIC
+     * This is executed every time we have one /MOODLE_BACKUP/COURSE/MODULES/MOD/QV
      * data available
      */
     public function process_qv($data) {
+		
         // get the course module id and context id
         $instanceid     = $data['id'];
         $cminfo         = $this->get_cminfo($instanceid);
@@ -88,14 +89,34 @@ class moodle1_mod_qv_handler extends moodle1_mod_handler {
         $data['intro'] = moodle1_converter::migrate_referenced_files($data['intro'], $this->fileman);
 
         // migrate qv package file
-        $this->fileman->filearea = 'content';
+        $this->fileman->filearea = 'package';
         $this->fileman->itemid   = 0;
-        if (!qv_is_valid_external_url($data['url']) ) {
-            // Migrate file
+        if (!qv_is_valid_external_url($data['reference']) ) {
             try{
-                $this->fileman->migrate_file('course_files/'.$data['url']);            
+				$base = $this->converter->get_tempdir_path().'/course_files';
+				$last = strrpos($data['reference'], '/html/');
+				$basepath = $base.'/'.substr($data['reference'], 0, $last+1);
+
+				$filestemp = get_directory_list($basepath, '', false, true, true);
+				$files = array();
+				foreach ($filestemp as $file) {
+					// Add zip paths and fs paths to all them
+					$files[$file] = $basepath . $file;
+				}
+				
+				$packer = get_file_packer('application/zip');
+				$zipname = str_replace(' ','',$data['name']);
+				$zipname = textlib::strtolower($zipname).'.qv.zip';
+				check_dir_exists($base.'/qv_packs/', true, true);
+				if($packer->archive_to_pathname($files,$base.'/qv_packs/'.$zipname)){
+					$this->fileman->migrate_file('course_files/qv_packs/'.$zipname,'/',$zipname);
+					$data['reference'] = $zipname;
+				}
+				else{
+					echo 'Cannot zip files';
+				}
             } catch (Exception $e){
-                echo 'Caught exception: ',  $e->getMessage(), ' File: \'',$data['url'], '\' on JClic activity \''.$data['name'].'\' <br>';
+                echo 'Caught exception: ',  $e->getMessage(), ' File: \'',$data['reference'], '\' on QV activity \''.$data['name'].'\' <br>';
             }
         }
         
@@ -115,7 +136,7 @@ class moodle1_mod_qv_handler extends moodle1_mod_handler {
                 $this->xmlwriter->full_tag($field, $value);
             }
         }
-
+        
         return $data;
     }
  

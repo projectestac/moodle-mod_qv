@@ -138,11 +138,15 @@ function xmldb_qv_upgrade($oldversion=0) {
 
         // timeavailable
         $field = new xmldb_field('timeavailable', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, null, null, '0', 'exiturl');
-        $dbman->add_field($table, $field);
+        if (!$dbman->field_exists($table, $field)) {
+			$dbman->add_field($table, $field);
+		}
 
 		// timedue
         $field = new xmldb_field('timedue', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, null, null, '0', 'timeavailable');
-        $dbman->add_field($table, $field);
+        if (!$dbman->field_exists($table, $field)) {
+			$dbman->add_field($table, $field);
+		}
 
 		//reference
         $field = new xmldb_field('reference', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'introformat');
@@ -152,13 +156,11 @@ function xmldb_qv_upgrade($oldversion=0) {
 
 
         // Migrate to new file storage system)
-        // @TODO: test it!!!!
-        $migrated = qv_migrate_files();
-
-		if($migrated){
-			//Delete assessmenturl
-			$field = new xmldb_field('assessmenturl');
-			if ($dbman->field_exists($table, $field)) {
+        $field = new xmldb_field('assessmenturl');
+		if ($dbman->field_exists($table, $field)) {
+			$migrated = qv_migrate_files();
+			if($migrated){
+				//Delete assessmenturl if all files are migrated
 				$dbman->drop_field($table, $field);
 			}
 		}
@@ -174,7 +176,6 @@ function xmldb_qv_upgrade($oldversion=0) {
             }
             $rs->close();
         }
-
         
         // qv savepoint reached
         upgrade_mod_savepoint(true, 2013022800, 'qv');

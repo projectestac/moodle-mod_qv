@@ -70,8 +70,8 @@ class restore_qv_activity_task extends restore_activity_task {
     static public function define_decode_rules() {
         $rules = array();
 
-        $rules[] = new restore_decode_rule('JCLICVIEWBYID', '/mod/qv/view.php?id=$1', 'course_module');
-        $rules[] = new restore_decode_rule('JCLICINDEX', '/mod/qv/index.php?id=$1', 'course');
+        $rules[] = new restore_decode_rule('QVVIEWBYID', '/mod/qv/view.php?id=$1', 'course_module');
+        $rules[] = new restore_decode_rule('QVINDEX', '/mod/qv/index.php?id=$1', 'course');
 
         return $rules;
 
