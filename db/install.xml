@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/qv/db" VERSION="20070124" COMMENT="XMLDB file for Moodle mod/qv"
+<XMLDB PATH="mod/qv/db" VERSION="20130228" COMMENT="XMLDB file for Moodle mod/qv"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -20,11 +20,10 @@
 			<FIELD NAME="ordersections" TYPE="int" LENGTH="1" NOTNULL="false" DEFAULT="0" SEQUENCE="false" PREVIOUS="showinteraction" NEXT="orderitems"/>
 			<FIELD NAME="orderitems" TYPE="int" LENGTH="1" NOTNULL="false" DEFAULT="0" SEQUENCE="false" PREVIOUS="ordersections" NEXT="target"/>
 			<FIELD NAME="target" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="self" SEQUENCE="false" PREVIOUS="orderitems" NEXT="grade"/>
-			<FIELD NAME="grade" TYPE="number" LENGTH="10" NOTNULL="false" SEQUENCE="false" DECIMALS="0" PREVIOUS="target" NEXT="width"/>
+			<FIELD NAME="grade" TYPE="number" LENGTH="10" NOTNULL="false" SEQUENCE="false" PREVIOUS="target" NEXT="width"/>
 			<FIELD NAME="width" TYPE="char" LENGTH="10" NOTNULL="false" SEQUENCE="false" PREVIOUS="grade" NEXT="height"/>
-			<FIELD NAME="height" TYPE="char" LENGTH="10" NOTNULL="false" SEQUENCE="false" PREVIOUS="width" NEXT="sha1hash"/>
-			<FIELD NAME="sha1hash" TYPE="char" LENGTH="40" NOTNULL="false" SEQUENCE="false" COMMENT="package content or ext path hash" PREVIOUS="height" NEXT="timeavailable"/>
-			<FIELD NAME="timeavailable" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="sha1hash" NEXT="timedue"/>
+			<FIELD NAME="height" TYPE="char" LENGTH="10" NOTNULL="false" SEQUENCE="false" PREVIOUS="width" NEXT="timeavailable"/>
+			<FIELD NAME="timeavailable" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="height" NEXT="timedue"/>
 			<FIELD NAME="timedue" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="timeavailable"/>
 		</FIELDS>
 		<KEYS>

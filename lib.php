@@ -818,7 +818,7 @@ function qv_delete_instance_userdata($qvid){
 		}
 		$DB->delete_records('qv_sections', array('assignmentid' => $assid));
 	}
-	$DB->delete_records('qv_assignments', array('qvid' => $qvid);
+	$DB->delete_records('qv_assignments', array('qvid' => $qvid));
 }
 
 /**

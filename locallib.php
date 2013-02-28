@@ -58,7 +58,6 @@ class qv{
 	public $grade;
 	public $width;
 	public $height;
-	public $sha1hash;
 	public $timeavailable;
 	public $timedue;
 
@@ -74,6 +73,13 @@ class qv{
 		if (!$record = $DB->get_record('qv', array('id'=>$id))) {
 			return false;
 		}
+		
+		if(empty($record->reference)){
+			global $CFG;
+			require_once("$CFG->dirroot/mod/qv/db/upgradelib.php");
+			qv_migrate_activity($record);
+		}
+		
 		$this->load_record($record);
 	}
 
@@ -94,7 +100,6 @@ class qv{
 		$this->target = $record->target;
 		$this->grade = $record->grade;
 		$this->width = $record->width;
-		$this->sha1hash = $record->sha1hash;
 		$this->timeavailable = $record->timeavailable;
 		$this->timedue = $record->timedue;
 		
@@ -126,23 +131,33 @@ class qv{
 		if($this->filetype != QV_FILE_TYPE_LOCAL) return false;
 		
 		if ($this->packagefile) {
+			
+			$fs = get_file_storage();
+			
+			$indexfile = $this->get_index_file($fs);
 			//Content out of date or updating on demand
-			if($force_extract || !$this->get_index_file()){
-				debugging('EXTRACT');
+			if($force_extract || !$indexfile){
+				debugging('EXTRACTING PACKAGE...');
 				// now extract files
 				$this->delete_content();
 
 				$packer = get_file_packer('application/zip');
-				$files = $this->packagefile->extract_to_storage($packer, $this->context->id, 'mod_qv', 'content', 0, '/');
+				$this->packagefile->extract_to_storage($packer, $this->context->id, 'mod_qv', 'content', 0, '/');
 
-				if(isset($files['html/index.htm'])){
-					return true;
+				$indexfile = $this->get_index_file($fs);
+				if($indexfile){
+					return $indexfile;
 				}
 			} else {
-				return true;
+				return $indexfile;
 			}
 		}
 		return false;
+	}
+
+	private function get_index_file($fs = false){
+		if(!$fs) $fs = get_file_storage();
+		return  $fs->get_file($this->context->id, 'mod_qv', 'content', 0, '/html/', 'index.htm');
 	}
 
 	function get_url(){
@@ -150,12 +165,12 @@ class qv{
         
         if($this->filetype == QV_FILE_TYPE_EXTERNAL) {
             return $this->reference;
-        } else if($this->extract_package()){
-			if($indexfile = $this->get_index_file()){
-				$path = '/'.$this->context->id.'/mod_qv/content/0'.$indexfile->get_filepath().$indexfile->get_filename();
-				return file_encode_url($CFG->wwwroot.'/pluginfile.php', $path, false);
-			}
-		} 
+        } else if($indexfile = $this->extract_package()){
+			$path = '/'.$this->context->id.'/mod_qv/content/0'.$indexfile->get_filepath().$indexfile->get_filename();
+			return file_encode_url($CFG->wwwroot.'/pluginfile.php', $path, false);
+		} else {
+			print_error('invalidqvfile','qv');
+		}
 		return false;
     }
 
@@ -266,10 +281,15 @@ class qv{
 			$content .= html_writer::tag('iframe',"",$params);
 		} else {
 			$params = array();
-			$params['toolbar'] = 0;
-			$params['status'] =  0;
-			$params['scrollbars'] = 1;
-			$params['resizable'] = 1;
+			$params['toolbar'] = 'no';
+			$params['status'] =  'no';
+			$params['location'] =  'no';
+			$params['menubar'] =  'no';
+			$params['copyhistory'] =  'no';
+			$params['directories'] =  'no';
+			
+			$params['scrollbars'] = 'yes';
+			$params['resizable'] = 'yes';
 			$params['width'] = $this->width;
 			$params['height'] = $this->height;
 			$params['fullscreen'] = empty($this->width)||$this->width=='100%'||empty($this->height);
@@ -504,11 +524,6 @@ class qv{
         return $content;
     }
     
-
-    private function get_index_file(){
-		$fs = get_file_storage();
-		return $fs->get_file($this->context->id, 'mod_qv', 'content', 0, '/html/', 'index.htm');
-	}
 
 	function delete_content(){
 		$fs = get_file_storage();
