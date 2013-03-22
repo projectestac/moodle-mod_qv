@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -27,51 +26,76 @@
  */
 
 /**
+ * Define all the backup steps that will be used by the backup_scorm_activity_task
+ */
+
+/**
  * Define the complete qv structure for backup, with file and id annotations
- */     
+ */
 class backup_qv_activity_structure_step extends backup_activity_structure_step {
- 
+
     protected function define_structure() {
- 
+
         // To know if we are including userinfo
         $userinfo = $this->get_setting_value('userinfo');
- 
+
         // Define each element separated
         $qv = new backup_nested_element('qv', array('id'), array(
-            'name', 'intro', 'introformat', 'url', 'skin', 'maxattempts', 
-            'width', 'height', 'avaluation', 'maxgrade', 'grade', 'lang', 
-            'exiturl', 'timeavailable', 'timedue'));
- 
-        $sessions = new backup_nested_element('sessions');
- 
-        $session = new backup_nested_element('session', array('id'), array(
-            'session_id', 'user_id', 'session_datetime', 'project_name',
-            'session_key', 'session_code', 'session_context'));
- 
-        $activities = new backup_nested_element('sessionactivities');
- 
-        $activity = new backup_nested_element('sessionactivity', array('id'), array(
-            'session_id', 'activity_id', 'activity_name', 'num_actions', 'score',
-            'activity_solved', 'qualification', 'total_time', 'activity_code'));
-        
+            'name', 'intro', 'introformat', 'reference', 'skin', 'assessmentlang', 'maxdeliver',
+            'showcorrection', 'showinteraction', 'ordersections', 'orderitems', 'target',
+            'grade', 'width', 'height', 'timeavailable', 'timedue'));
+
+        $assignments = new backup_nested_element('assignments');
+
+        $assignment = new backup_nested_element('assignment', array('id'), array(
+            'userid', 'sectionorder', 'itemorder', 'idnumber'));
+
+        $sections = new backup_nested_element('sections');
+
+        $section = new backup_nested_element('section', array('id'), array(
+            'sectionid', 'responses', 'scores', 'pending_scores', 'attempts',
+            'state', 'time'));
+
+		$messages = new backup_nested_element('messages');
+
+        $message = new backup_nested_element('message', array('id'), array(
+            'itemid', 'userid', 'created', 'message'));
+
+		$messages_read = new backup_nested_element('messages_read');
+
+        $message_read = new backup_nested_element('message_read', array('id'), array(
+            'userid', 'timereaded'));
+
         // Build the tree
-        $qv->add_child($sessions);
-        $sessions->add_child($session);
-        $session->add_child($activities);
-        $activities->add_child($activity);
- 
+        $qv->add_child($assignments);
+
+        $assignments->add_child($assignment);
+        $assignment->add_child($sections);
+
+        $sections->add_child($section);
+		$section->add_child($messages);
+        $messages->add_child($message);
+		$section->add_child($messages_read);
+        $messages_read->add_child($message_read);
+
         // Define sources
         $qv->set_source_table('qv', array('id' => backup::VAR_ACTIVITYID));
-  
+
         // All the rest of elements only happen if we are including user info
         if ($userinfo) {
-            $session->set_source_table('qv_sessions', array('qvid' => backup::VAR_PARENTID));
-            $activity->set_source_table('qv_activities', array('session_id' => '../../session_id'));
+            $assignment->set_source_table('qv_assignments', array('qvid' => backup::VAR_PARENTID));
+            $section->set_source_table('qv_sections', array('assignmentid' => '../../id'));
+            $message->set_source_table('qv_messages', array('sid' => '../../id'));
+            $message_read->set_source_table('qv_messages_read', array('sid' => '../../id'));
+
+            $assignment->annotate_ids('user', 'userid');
+			$message->annotate_ids('user', 'userid');
+			$message_read->annotate_ids('user', 'userid');
         }
         
         // Define id annotations
         $qv->annotate_ids('scale', 'grade');
-        $session->annotate_ids('user', 'user_id');
+
 
         // Define file annotations
         $qv->annotate_files('mod_qv', 'intro', null);     // This file area hasn't itemid

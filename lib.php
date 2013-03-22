@@ -95,7 +95,7 @@ function qv_supports($feature) {
 //        case FEATURE_SHOW_DESCRIPTION:        return true;
 //        case FEATURE_ADVANCED_GRADING:        return true;
         default:                        
-          if (defined('FEATURE_SHOW_DESCRIPTION') && $feature==FEATURE_SHOW_DESCRIPTION) return true;
+          if (defined('FEATURE_SHOW_DESCRIPTION') && $feature == FEATURE_SHOW_DESCRIPTION) return true;
           else return null;
     }
 }
@@ -172,7 +172,7 @@ function qv_after_add_or_update($qv, $filetype){
 	$fs = get_file_storage();
      
 	if ($filetype === QV_FILE_TYPE_LOCAL) {
-		$filename = qv_set_mainfile($qv);
+		$filename = qv_save_package($qv);
         $qv->reference = $filename;
         $DB->update_record('qv', $qv);
     } else {
@@ -693,8 +693,11 @@ function mod_qv_pluginfile($course, $cm, $context, $filearea, $args, $forcedownl
 			return false;
 		}
         $revision = (int)array_shift($args); // prevents caching problems - ignored here
+        $reference = (int)array_shift($args); //Hack to make foldername match with XML
+        
         $relativepath = implode('/', $args);
         $fullpath = "/$context->id/mod_qv/content/0/$relativepath";
+        
     } else if ($filearea === 'package') {
         if (!has_capability('moodle/course:manageactivities', $context)) {
             return false;

@@ -33,234 +33,235 @@ define('ERROR_DB_UPDATE', 'error_db_update');
 define('ERROR_MAXDELIVER_EXCEEDED', 'error_maxdeliver_exceeded');
 
 
-if($GLOBALS["HTTP_RAW_POST_DATA"]){
-  $my_xml = $GLOBALS["HTTP_RAW_POST_DATA"];
-} else {
-  $my_xml = $HTTP_RAW_POST_DATA;
+if(isset($GLOBALS["HTTP_RAW_POST_DATA"]) && $GLOBALS["HTTP_RAW_POST_DATA"]){
+	$my_xml = $GLOBALS["HTTP_RAW_POST_DATA"];
+} else if(isset($HTTP_RAW_POST_DATA)){
+	$my_xml = $HTTP_RAW_POST_DATA;
 }
-//$my_xml=utf8_decode($my_xml);
 
 require_once("../../../config.php");
 require_once("../lib.php");
 require_once("../locallib.php");
-
-
-$dbman = $DB->get_manager(); // loads ddl manager and xmldb classes
-
 
 $elements=array();
 $oldElements=array();
 $thisElement="";
 
 
-$beans=array();
-$currentBean=-1;
-$params=array();
+$beans = array();
+$currentBean = -1;
+$params = array();
 
 function startElement($parser, $name, $attribs ) {
-   global $beans, $currentBean, $params, $thisElement, $oldElements, $elements;
-   array_push( $oldElements, $thisElement);
-   $thisElement=$name;
-   if ($name=='BEAN'){
-   	$currentBean++;
-   	$bean=array();
-   	$bean['ID']=$attribs['ID'];
-   	$bean['PARAMS']="";
-	$beans[$currentBean]=$bean;
-	$params=array();
-   }else if ($name=='PARAM'){
-   	$params[$attribs['NAME']]=$attribs['VALUE'];
-   }else if ($name=='ACTIVITY'){
-   	$beans[$currentBean]['ACTIVITY']=array('name'=>$attribs['NAME'],'start'=>$attribs['START'],'time'=>$attribs['TIME'],'solved'=>$attribs['SOLVED'],'score'=>$attribs['SCORE'],'minActions'=>$attribs['MINACTIONS'],'actions'=>$attribs['ACTIONS']);
-   }
-   $elements[ $thisElement ] = $attribs;
+	global $beans, $currentBean, $params, $thisElement, $oldElements, $elements;
+	
+	array_push($oldElements, $thisElement);
+	$thisElement=$name;
+	if ($name == 'BEAN'){
+		$currentBean++;
+		$bean = array();
+		$bean['ID'] = $attribs['ID'];
+		$bean['PARAMS'] = "";
+		$beans[$currentBean] = $bean;
+		$params = array();
+	}else if ($name == 'PARAM'){
+		$params[$attribs['NAME']] = $attribs['VALUE'];
+	}else if ($name == 'ACTIVITY'){
+		$beans[$currentBean]['ACTIVITY'] = array('name'=>$attribs['NAME'],'start'=>$attribs['START'],'time'=>$attribs['TIME'],'solved'=>$attribs['SOLVED'],'score'=>$attribs['SCORE'],'minActions'=>$attribs['MINACTIONS'],'actions'=>$attribs['ACTIONS']);
+	}
+	$elements[ $thisElement ] = $attribs;
 }
 
 function endElement($parser, $name) {
    global $beans, $currentBean, $params, $thisElement, $oldElements;
-   $thisElement= array_pop( $oldElements);
-   $beans[$currentBean]['PARAMS']=$params;
+   
+   $thisElement = array_pop( $oldElements);
+   $beans[$currentBean]['PARAMS'] = $params;
 }
 
 function characterData($parser, $text) {
-   global $beans, $currentBean, $params, $thisElement, $elements;
-   $elements[ $thisElement ] .= $text;
-   if ($thisElement=='MESSAGE' || $thisElement=='RESPONSES' || $thisElement=='SCORES') {
-    if (!array_key_exists(strtolower($thisElement), $params)) $params[strtolower($thisElement)]='';
-    $params[strtolower($thisElement)].=str_replace("'", "&#39;", $text);
-  }
+	global $beans, $currentBean, $params, $thisElement, $elements;
+   
+	$elements[ $thisElement ] .= $text;
+	if ($thisElement == 'MESSAGE' || $thisElement == 'RESPONSES' || $thisElement == 'SCORES') {
+		if (!array_key_exists(strtolower($thisElement), $params))
+			$params[strtolower($thisElement)] = '';
+		$params[strtolower($thisElement)] .= str_replace("'", "&#39;", $text);
+	}
 }
 
 $xml_parser = xml_parser_create('UTF-8');
-xml_set_element_handler($xml_parser, "startElement", "endElement");
-xml_set_character_data_handler($xml_parser, "characterData");
+xml_set_element_handler($xml_parser, 'startElement', 'endElement');
+xml_set_character_data_handler($xml_parser, 'characterData');
 xml_parse($xml_parser, $my_xml);
 xml_parser_free($xml_parser);
 
 switch($beans[0]['ID']){
     case "add_message":
-	  $assignmentid=$beans[0]['PARAMS']['assignmentid'];
-	  $sectionid=$beans[0]['PARAMS']['sectionid'];
-	  $itemid=$beans[0]['PARAMS']['itemid'];
-	  $userid=$beans[0]['PARAMS']['userid'];
-	  $text=$beans[0]['PARAMS']['message'];
-	  echo addMessage($assignmentid, $sectionid, $itemid, $userid, $text);
-    break;
+		$assignmentid=$beans[0]['PARAMS']['assignmentid'];
+		$sectionid=$beans[0]['PARAMS']['sectionid'];
+		$itemid=$beans[0]['PARAMS']['itemid'];
+		$userid=$beans[0]['PARAMS']['userid'];
+		$text=$beans[0]['PARAMS']['message'];
+		$bean = addMessage($assignmentid, $sectionid, $itemid, $userid, $text);
+		break;
     case "correct_section":
-	  $assignmentid=$beans[0]['PARAMS']['assignmentid'];
-	  $sectionid=$beans[0]['PARAMS']['sectionid'];
-	  $responses=(array_key_exists('responses', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['responses']:'';//Albert
-	  $scores=(array_key_exists('scores', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['scores']:'';//Albert
-	  echo correctSection($assignmentid, $sectionid, $responses, $scores);
-    break;
+		$assignmentid=$beans[0]['PARAMS']['assignmentid'];
+		$sectionid=$beans[0]['PARAMS']['sectionid'];
+		$responses=(array_key_exists('responses', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['responses']:'';//Albert
+		$scores=(array_key_exists('scores', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['scores']:'';//Albert
+		$bean = correctSection($assignmentid, $sectionid, $responses, $scores);
+		break;
     case "save_time": //Albert
-	  $assignmentid=$beans[0]['PARAMS']['assignmentid'];
-	  $sectionid=$beans[0]['PARAMS']['sectionid'];
-	  $sectiontime=$beans[0]['PARAMS']['time'];
-	  //echo correctSection($assignmentid, $sectionid);
-	  echo saveTime($assignmentid, $sectionid, $sectiontime);
-    break;
+		$assignmentid=$beans[0]['PARAMS']['assignmentid'];
+		$sectionid=$beans[0]['PARAMS']['sectionid'];
+		$sectiontime=$beans[0]['PARAMS']['time'];
+		//echo correctSection($assignmentid, $sectionid);
+		$bean = saveTime($assignmentid, $sectionid, $sectiontime);
+		break;
     case "deliver_section":
-	  $assignmentid=$beans[0]['PARAMS']['assignmentid'];
-	  $sectionid=$beans[0]['PARAMS']['sectionid'];
-	  $sectionorder=(array_key_exists('sectionorder', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['sectionorder']:-1; //Albert
-	  $itemorder=(array_key_exists('itemorder', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['itemorder']:-1; //Albert
-	  $sectiontime=(array_key_exists('time', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['time']:0; //Albert
-	  $responses=(array_key_exists('responses', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['responses']:'';
-	  $scores=(array_key_exists('scores', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['scores']:'';
-	  echo deliverSection($assignmentid, $sectionid, $responses, $scores, $sectionorder, $itemorder, $sectiontime);
-    break;
+		$assignmentid=$beans[0]['PARAMS']['assignmentid'];
+		$sectionid=$beans[0]['PARAMS']['sectionid'];
+		$sectionorder=(array_key_exists('sectionorder', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['sectionorder']:-1; //Albert
+		$itemorder=(array_key_exists('itemorder', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['itemorder']:-1; //Albert
+		$sectiontime=(array_key_exists('time', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['time']:0; //Albert
+		$responses=(array_key_exists('responses', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['responses']:'';
+		$scores=(array_key_exists('scores', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['scores']:'';
+		$bean = deliverSection($assignmentid, $sectionid, $responses, $scores, $sectionorder, $itemorder, $sectiontime);
+		break;
     case "get_messages":
-	  $assignmentid=$beans[0]['PARAMS']['assignmentid'];
-	  $sectionid=$beans[0]['PARAMS']['sectionid'];
-	  echo getMessages($assignmentid, $sectionid);
-    break;
+		$assignmentid=$beans[0]['PARAMS']['assignmentid'];
+		$sectionid=$beans[0]['PARAMS']['sectionid'];
+		$bean = getMessages($assignmentid, $sectionid);
+		break;
     case "get_section":
-	  $assignmentid=$beans[0]['PARAMS']['assignmentid'];
-	  $sectionid=$beans[0]['PARAMS']['sectionid'];
-    echo getSection($assignmentid, $sectionid);
-    break;
+		$assignmentid=$beans[0]['PARAMS']['assignmentid'];
+		$sectionid=$beans[0]['PARAMS']['sectionid'];
+		$bean = getSection($assignmentid, $sectionid);
+		break;
 	case "get_sections":
-	  $assignmentid=$beans[0]['PARAMS']['assignmentid'];
-	  echo getSections($assignmentid);
-    break;
+		$assignmentid = $beans[0]['PARAMS']['assignmentid'];
+		$bean = getSections($assignmentid);
+		break;
 	case "save_section":
-	  $assignmentid=$beans[0]['PARAMS']['assignmentid'];
-	  $sectionid=$beans[0]['PARAMS']['sectionid'];
-	  $sectionorder=(array_key_exists('sectionorder', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['sectionorder']:-1; //Albert
-	  $itemorder=(array_key_exists('itemorder', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['itemorder']:-1; //Albert
-	  $sectiontime=(array_key_exists('time', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['time']:0; //Albert
-	  $responses=$beans[0]['PARAMS']['responses'];
-    echo saveSection($assignmentid, $sectionid, $responses, $sectionorder, $itemorder, $sectiontime);
-    break;
+		$assignmentid=$beans[0]['PARAMS']['assignmentid'];
+		$sectionid=$beans[0]['PARAMS']['sectionid'];
+		$sectionorder=(array_key_exists('sectionorder', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['sectionorder']:-1; //Albert
+		$itemorder=(array_key_exists('itemorder', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['itemorder']:-1; //Albert
+		$sectiontime=(array_key_exists('time', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['time']:0; //Albert
+		$responses=$beans[0]['PARAMS']['responses'];
+		$bean = saveSection($assignmentid, $sectionid, $responses, $sectionorder, $itemorder, $sectiontime);
+		break;
 	case "save_section_teacher":
-	  $assignmentid=$beans[0]['PARAMS']['assignmentid'];
-	  $sectionid=$beans[0]['PARAMS']['sectionid'];
-	  $responses=$beans[0]['PARAMS']['responses'];
-	  $scores=(array_key_exists('scores', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['scores']:'';//A
-    echo saveSectionTeacher($assignmentid, $sectionid, $responses, $scores);//A
-    break;
+		$assignmentid=$beans[0]['PARAMS']['assignmentid'];
+		$sectionid=$beans[0]['PARAMS']['sectionid'];
+		$responses=$beans[0]['PARAMS']['responses'];
+		$scores=(array_key_exists('scores', $beans[0]['PARAMS']))?$beans[0]['PARAMS']['scores']:'';//A
+		$bean = saveSectionTeacher($assignmentid, $sectionid, $responses, $scores);//A
+		break;
 	default:
-		echo '<?xml version="1.0" encoding="UTF-8"?'.'>';
-		echo '<bean id="'.$beans[0]['ID'].'">';
-		echo ' <param name="error" value="'.ERROR_BEAN_NOT_DEFINED.'"/>';
-		echo '</bean>';
+		$bean = new SimpleXMLElement('<bean/>');
+		$bean->addAttribute('id',$beans[0]['ID']);
+		$param = $bean->addChild('param');
+		$param->addAttribute('name','error');
+		$param->addAttribute('value', ERROR_BEAN_NOT_DEFINED);
+		break;
 }
+
+$xml = $bean->asXML();
+echo str_replace('<?xml version="1.0"?>', '<?xml version="1.0" encoding="UTF-8"?>', $xml);
 
 
 function getSections($assignmentid){
-  global $CFG, $DB;
+	global $DB;
   
-  if (!existsAssignment($assignmentid)){
-    $error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
-  }
-  $response ='';//A
-  //A $response ='<?xml version="1.0" encoding="UTF-8"?'.'>';
-  //A $response.='<bean id="get_sections" assignmentid="'.$assignmentid.'" '.(isset($error)?'error="'.$error.'"':"").'   >';
-  $time="00:00:00";//Albert
+	if (!existsAssignment($assignmentid)){
+		$error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
+	}
 	
-  if (!isset($error)){
-    if($qv = $DB->get_record_sql("SELECT q.id as qvid, q.maxdeliver, q.showcorrection
-                             FROM {$CFG->prefix}qv q, {$CFG->prefix}qv_assignments a 
-                             WHERE q.id=a.qvid AND a.id=$assignmentid")){
-		
-        if ($qv_sections = $DB->get_records('qv_sections', array('assignmentid'=>$assignmentid))){
-            $maxdeliver = $qv->maxdeliver;
-            $showcorrection = $qv->showcorrection;
-            foreach ($qv_sections as $qv_section){
-                $time = qv_add_time($time, $qv_section->time); //Albert
-                $response.="<section ";
-                $response.=" id=\"$qv_section->sectionid\" ";
-                $response.=" showcorrection=\"$showcorrection\"";
-                $response.=" maxdeliver=\"$maxdeliver\"";
-                $response.=" attempts=\"$qv_section->attempts\"";
-                $response.=" scores=\"$qv_section->scores\"";
-                $response.=" pending_scores=\"$qv_section->pending_scores\"";//A
-                $response.=" state=\"$qv_section->state\"";
-                $response.=" time=\"$qv_section->time\"";//Albert
-                $response.="/>";
-            }
-        }	
-    }
-  }
-  //A $response.='</bean>';
+	$time = '00:00:00';
+	
+	$bean = new SimpleXMLElement('<bean/>');
+	$bean->addAttribute('id','get_sections');
+	$bean->addAttribute('assignmentid',$assignmentid);
+	
+	if (!isset($error)){
+		if($qv = $DB->get_record_sql("SELECT q.id as qvid, q.maxdeliver, q.showcorrection
+							 FROM {qv} q, {qv_assignments} a 
+							 WHERE q.id = a.qvid AND a.id = $assignmentid")){
+			if ($qv_sections = $DB->get_records('qv_sections', array('assignmentid'=>$assignmentid))){
+				foreach ($qv_sections as $qv_section){
+					$time = qv_add_time($time, $qv_section->time);
+					$section = $bean->addChild('section');
+					$section->addAttribute('id',$qv_section->sectionid);
+					$section->addAttribute('showcorrection',$qv->showcorrection);
+					$section->addAttribute('maxdeliver',$qv->maxdeliver);
+					$section->addAttribute('attempts',$qv_section->attempts);
+					$section->addAttribute('scores',$qv_section->scores);
+					$section->addAttribute('pending_scores',$qv_section->pending_scores);
+					$section->addAttribute('state',$qv_section->state);
+					$section->addAttribute('time',$qv_section->time);
+				}
+			}	
+		}
+	} else {
+		$message->addAttribute('error',$error);
+	}
   
-  $responseHeader ='<?xml version="1.0" encoding="UTF-8"?'.'>';
-  $responseHeader.='<bean id="get_sections" assignmentid="'.$assignmentid.'" time="'.$time.'" '.(isset($error)?'error="'.$error.'"':"").'   >';
-  $response=$responseHeader.$response;//A
-  $response.='</bean>';//A
+	$bean->addAttribute('time',$time);
 	
-  return $response;
+	return $bean;
 }
 
 function getSection($assignmentid, $sectionid){
-  global $CFG, $DB;
-  if (!existsAssignment($assignmentid)){
-    $error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
-  }else{
-    if ($qv_section = $DB->get_record('qv_sections', array('assignmentid'=>$assignmentid, 'sectionid'=>$sectionid))){
-        $responses = $qv_section->responses;
-        $scores = $qv_section->scores;
-        $pending_scores = $qv_section->pending_scores;//A
-        $attempts = $qv_section->attempts;
-        $state = $qv_section->state;
-        $time = $qv_section->time;//Albert
-    }else{
-  	 $responses='';
-  	 $scores='';
-	 $pending_scores = '';//A
-  	 $attempts = 0;
-  	 $state = -1;
-	 $time = "00:00:00";//Albert
-    }
-  	
-    if($qv = $DB->get_record_sql("SELECT q.id as qvid, q.maxdeliver, q.showcorrection
-  	                         FROM {$CFG->prefix}qv q, {$CFG->prefix}qv_assignments a 
-                             WHERE q.id=a.qvid AND a.id=$assignmentid")){
-          $qvid = $qv->qvid;
-          $maxdeliver = $qv->maxdeliver;
-          $showcorrection = $qv->showcorrection;
-  	}  
-  }
+	global $DB;
 
-  	
-  $response ='<?xml version="1.0" encoding="UTF-8"?'.'>';
-  $response.='<bean id="get_section" assignmentid="'.$assignmentid.'">';
-  $response.=" <section ";
-  $response.="  id=\"$sectionid\" ";
-  if (isset($error)) $response.=" error=\"$error\" ";
-  $response.="  showcorrection=\"$showcorrection\"";
-  $response.="  maxdeliver=\"$maxdeliver\"";
-  $response.="  attempts=\"$attempts\"";
-  $response.="  state=\"$state\"";
-  $response.="  time=\"$time\"";//Albert
-  $response.=" >";
-  $response.="  <responses><![CDATA[$responses]]></responses>";
-  $response.="  <scores><![CDATA[$scores]]></scores>";
-  $response.="  <pending_scores><![CDATA[$pending_scores]]></pending_scores>";//A
-  $response.=" </section>";	  
-  $response.='</bean>';
-  return $response;
+	$responses = '';
+	$scores = '';
+	$pending_scores = '';
+	$attempts = 0;
+	$state = -1;
+	$time = "00:00:00";
+	$maxdeliver = '';
+	$showcorrection = '';
+	
+	if (!existsAssignment($assignmentid)){
+		$error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
+	} else {
+		if ($qv_section = $DB->get_record('qv_sections', array('assignmentid'=>$assignmentid, 'sectionid'=>$sectionid))){
+			$responses = $qv_section->responses;
+			$scores = $qv_section->scores;
+			$pending_scores = $qv_section->pending_scores;//A
+			$attempts = $qv_section->attempts;
+			$state = $qv_section->state;
+			$time = $qv_section->time;//Albert
+		}
+
+		if($qv = $DB->get_record_sql("SELECT q.id as qvid, q.maxdeliver, q.showcorrection
+								 FROM {qv} q, {qv_assignments} a 
+								 WHERE q.id=a.qvid AND a.id=$assignmentid")){
+			  $maxdeliver = $qv->maxdeliver;
+			  $showcorrection = $qv->showcorrection;
+		}  
+	}
+
+	$bean = new SimpleXMLElement('<bean/>');
+	$bean->addAttribute('id','get_section');
+	$bean->addAttribute('assignmentid',$assignmentid);
+
+	$section = $bean->addChild('section');
+	$section->addAttribute('id',$sectionid);
+	if (isset($error)) $section->addAttribute('error',$error);
+	$section->addAttribute('showcorrection',$showcorrection);
+	$section->addAttribute('maxdeliver',$maxdeliver);
+	$section->addAttribute('attempts',$attempts);
+	$section->addAttribute('state',$state);
+	$section->addAttribute('time',$time);
+
+	$section->addChild('responses',$responses);
+	$section->addChild('pending_scores',$pending_scores);
+	
+	return $bean;
 }
 
 function existsAssignment($assignmentid){
@@ -270,25 +271,25 @@ function existsAssignment($assignmentid){
 }
 
 function checkMaxDeliverNotExceeded($qv_section){
-    global $CFG, $DB;
+    global $DB;
     
     $not_exceeded = true;
         //Check max deliver < current attempts
     if($qv = $DB->get_record_sql("SELECT q.maxdeliver, q.showcorrection
-                           FROM {$CFG->prefix}qv q, {$CFG->prefix}qv_assignments a  
+                           FROM {qv} q, {qv_assignments} a  
                            WHERE q.id=a.qvid AND a.id=$qv_section->assignmentid")){
-        $not_exceeded=($qv->maxdeliver<0 || $qv_section->attempts < $qv->maxdeliver);
+        $not_exceeded = ($qv->maxdeliver < 0 || $qv_section->attempts < $qv->maxdeliver);
     }
     return $not_exceeded;
 }
 
 function saveSection($assignmentid, $sectionid, $responses, $sectionOrder=-1, $itemOrder=-1, $sectiontime){ //Albert
-    global $CFG, $DB;
+    global  $DB;
     
     $qvAssignment = existsAssignment($assignmentid);//ALLR
     //ALLR if (!$existsAssignment($assignmentid)){
     if (!$qvAssignment){
-        $error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
+		$error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
     }else{
         $modifiedAssign = false;
         if($sectionOrder >= 0) { //Establishing sectionOrder
@@ -328,29 +329,32 @@ function saveSection($assignmentid, $sectionid, $responses, $sectionOrder=-1, $i
                 $qv_section->pending_scores = $qv_section->scores;//A
                 $qv_section->time = qv_add_time($qv_section->time, $sectiontime); 
                 if (!$DB->update_record('qv_sections', $qv_section)){
-                    $error=ERROR_DB_UPDATE;
+                    $error = ERROR_DB_UPDATE;
                 }
             }else{
-                $error=ERROR_MAXDELIVER_EXCEEDED;        		
+                $error = ERROR_MAXDELIVER_EXCEEDED;        		
             }
         }  
     }
 
-    $response ='<?xml version="1.0" encoding="UTF-8"?'.'>';
-    $response.='<bean id="save_section" assignmentid="'.$assignmentid.'" >';
-    $response.=" <section id=\"$sectionid\" ";
-    if (isset($error)) $response.=" error=\"$error\" ";
-    $response.=" state=\"$qv_section->state\" />";	
-    $response.='</bean>';
-    return $response;
+    $bean = new SimpleXMLElement('<bean/>');
+	$bean->addAttribute('id','save_section');
+	$bean->addAttribute('assignmentid',$assignmentid);
+
+	$section = $bean->addChild('section');
+	$section->addAttribute('id',$sectionid);
+	if (isset($error)) $section->addAttribute('error',$error);
+	$section->addAttribute('state',$qv_section->state);
+	
+	return $bean;
 }
 
 function saveSectionTeacher($assignmentid, $sectionid, $responses, $scores){ //Albert //A
-    global $CFG, $DB;
+    global $DB;
 
     $qvAssignment = existsAssignment($assignmentid);//ALLR
     if (!$qvAssignment){
-    $error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
+		$error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
     } else{
         if (!$qv_section = $DB->get_record('qv_sections', array('assignmentid'=>$assignmentid, 'sectionid'=>$sectionid))){
             // Insert section
@@ -382,17 +386,20 @@ function saveSectionTeacher($assignmentid, $sectionid, $responses, $scores){ //A
         }  
     }
   	
-    $response ='<?xml version="1.0" encoding="UTF-8"?'.'>';
-    $response.='<bean id="save_section_teacher" assignmentid="'.$assignmentid.'" >';
-    $response.=" <section id=\"$sectionid\" ";
-    if (isset($error)) $response.=" error=\"$error\" ";
-    $response.=" state=\"$qv_section->state\" />";	
-    $response.='</bean>';
-    return $response;
+	$bean = new SimpleXMLElement('<bean/>');
+	$bean->addAttribute('id','save_section_teacher');
+	$bean->addAttribute('assignmentid',$assignmentid);
+
+	$section = $bean->addChild('section');
+	$section->addAttribute('id',$sectionid);
+	if (isset($error)) $section->addAttribute('error',$error);
+	$section->addAttribute('state',$qv_section->state);
+	
+	return $bean;
 }
 
 function deliverSection($assignmentid, $sectionid, $responses, $scores, $sectionOrder=-1, $itemOrder=-1, $sectiontime){ //Albert
-    global $CFG, $DB;
+    global $DB;
 
     $qvAssignment = existsAssignment($assignmentid);//ALLR
     //ALLR if (!$existsAssignment($assignmentid)){
@@ -464,26 +471,26 @@ function deliverSection($assignmentid, $sectionid, $responses, $scores, $section
     }
 
     if($qv = $DB->get_record_sql("SELECT q.id as qvid, q.maxdeliver, q.showcorrection
-                             FROM {$CFG->prefix}qv q, {$CFG->prefix}qv_assignments a 
+                             FROM {qv} q, {qv_assignments} a 
                          WHERE q.id=a.qvid AND a.id=$assignmentid")){
-      $qvid = $qv->qvid;
-      $maxdeliver = $qv->maxdeliver;
-      $showcorrection = $qv->showcorrection;
+		$maxdeliver = $qv->maxdeliver;
+		$showcorrection = $qv->showcorrection;
     }
 
+    $bean = new SimpleXMLElement('<bean/>');
+	$bean->addAttribute('id','deliver_section');
+	$bean->addAttribute('assignmentid',$assignmentid);
 
-
-    $response ='<?xml version="1.0" encoding="UTF-8"?'.'>';
-    $response.='<bean id="deliver_section" assignmentid="'.$assignmentid.'" >';
-    $response.=" <section id=\"$sectionid\" ";
-    if (isset($error)) $response.=" error=\"$error\" ";
-    $response.=" attempts=\"$qv_section->attempts\" ";
-    $response.=" maxdeliver=\"$qv->maxdeliver\" ";
-    $response.=" showcorrection=\"$qv->showcorrection\" ";
-    $response.=" time=\"$qv_section->time\" ";//Albert
-    $response.=" state=\"$qv_section->state\" />";
-    $response.='</bean>';
-    return $response;
+	$section = $bean->addChild('section');
+	$section->addAttribute('id',$sectionid);
+	if (isset($error)) $section->addAttribute('error',$error);
+	$section->addAttribute('attempts',$qv_section->attempts);
+	$section->addAttribute('maxdeliver',$qv_section->maxdeliver);
+	$section->addAttribute('showcorrection',$qv_section->showcorrection);
+	$section->addAttribute('time',$qv_section->time);
+	$section->addAttribute('state',$qv_section->state);
+	
+	return $bean;
 }
 
 function correctSection($assignmentid, $sectionid, $responses, $scores){
@@ -538,13 +545,16 @@ function correctSection($assignmentid, $sectionid, $responses, $scores){
         }
     }
 
-    $response ='<?xml version="1.0" encoding="UTF-8"?'.'>';
-    $response.='<bean id="correct_section" assignmentid="'.$assignmentid.'" >';
-    $response.=" <section id=\"$sectionid\" ";
-    if (isset($error)) $response.=" error=\"$error\" ";
-    $response.=" state=\"$qv_section->state\" />";
-    $response.='</bean>';
-    return $response;
+    $bean = new SimpleXMLElement('<bean/>');
+	$bean->addAttribute('id','correct_section');
+	$bean->addAttribute('assignmentid',$assignmentid);
+
+	$section = $bean->addChild('section');
+	$section->addAttribute('id',$sectionid);
+	if (isset($error)) $section->addAttribute('error',$error);
+	$section->addAttribute('state',$qv_section->state);
+	
+	return $bean;
 }
 
 function saveTime($assignmentid, $sectionid, $sectiontime){
@@ -575,14 +585,16 @@ function saveTime($assignmentid, $sectionid, $sectiontime){
         }
     }
 
-    // Response		
-    $response ='<?xml version="1.0" encoding="UTF-8"?'.'>';
-    $response.='<bean id="save_time" assignmentid="'.$assignmentid.'" >';
-    $response.=" <section id=\"$sectionid\" ";
-    if (isset($error)) $response.=" error=\"$error\" ";
-    $response.=" time=\"$qv_section->time\" />";
-    $response.='</bean>';
-    return $response;
+    $bean = new SimpleXMLElement('<bean/>');
+	$bean->addAttribute('id','save_time');
+	$bean->addAttribute('assignmentid',$assignmentid);
+
+	$section = $bean->addChild('section');
+	$section->addAttribute('id',$sectionid);
+	if (isset($error)) $section->addAttribute('error',$error);
+	$section->addAttribute('time',$qv_section->time);
+	
+	return $bean;
 }
 
 function addMessage($assignmentid, $sectionid, $itemid, $userid, $message){
@@ -610,7 +622,7 @@ function addMessage($assignmentid, $sectionid, $itemid, $userid, $message){
             $qv_message->created = time();
             $qv_message->message = $message;
             $msgid = $DB->insert_record('qv_messages', $qv_message);
-            if ($msgid<=0) {
+            if ($msgid <= 0) {
                 $error = ERROR_DB_INSERT;
             } else{
                 // Mark message read for author user
@@ -619,14 +631,19 @@ function addMessage($assignmentid, $sectionid, $itemid, $userid, $message){
         }
     }
 
-    // Response		
-    $response ='<?xml version="1.0" encoding="UTF-8"?'.'>'."\n";
-    $response.='<bean id="add_message" assignmentid="'.$assignmentid.'" sectionid="'.$sectionid.'" itemid="'.$itemid.'" userid="'.$userid.'" >';
-    $response.="<message id=\"$msgid\" ";
-    if (isset($error)) $response.=" error=\"$error\" ";
-    $response.=" />";
-    $response.='</bean>';
-    return $response;
+    // Response
+    $bean = new SimpleXMLElement('<bean/>');
+	$bean->addAttribute('id','add_message');
+	$bean->addAttribute('assignmentid',$assignmentid);
+	$bean->addAttribute('sectionid',$sectionid);
+	$bean->addAttribute('itemid',$itemid);
+	$bean->addAttribute('userid',$userid);
+
+	$message = $bean->addChild('message');
+	$message->addAttribute('id',$msgid);
+	if (isset($error)) $message->addAttribute('error',$error);  
+
+    return $bean;
 }
 
 function getMessages($assignmentid, $sectionid){
@@ -640,29 +657,28 @@ function getMessages($assignmentid, $sectionid){
         }
     }
 
-    $response ='<?xml version="1.0" encoding="UTF-8"?'.'>';
-    $response.="\n".'<bean id="get_messages" assignmentid="'.$assignmentid.'" sectionid="'.$sectionid.'" userid="'.$USER->id.'" ';
-    if (isset($error)) {
-        $response.=" error=\"$error\" >";
-    } else{
-        $response.=" >";		
-        // Get messages    	
-        if ($qv_section && $qv_messages = $DB->get_records('qv_messages', array('sid'=>$qv_section->id), 'created')){
-            foreach ($qv_messages as $qv_message) {
-                $response.="\n<message id=\"$qv_message->id\" ";
-                $response.=" itemid=\"$qv_message->itemid\" ";
-                $response.=" userid=\"$qv_message->userid\" ";
-                if ($qv_user = $DB->get_record('user', array('id'=>$qv_message->userid))){
-                    $response.=" username=\"$qv_user->username\" ";
-                }
-                $response.=">\n";
-                $response.="<![CDATA[".$qv_message->message."]]>\n";
-                $response.="</message>\n";
-            }
-        }
-    }
-    $response.='</bean>';
-    return $response;
+    $bean = new SimpleXMLElement('<bean/>');
+	$bean->addAttribute('id','get_messages');
+	$bean->addAttribute('assignmentid',$assignmentid);
+	$bean->addAttribute('sectionid',$sectionid);
+	$bean->addAttribute('userid',$userid);
+	if (isset($error)) $bean->addAttribute('error',$error);
+	else if ($qv_section && $qv_messages = $DB->get_records('qv_messages', array('sid'=>$qv_section->id), 'created')){
+		foreach ($qv_messages as $qv_message) {
+			$message = $bean->addChild('message',$qv_message->message);
+			$message->addAttribute('id',$qv_message->id);
+			$message->addAttribute('itemid',$qv_message->itemid);
+			$message->addAttribute('userid',$qv_message->userid);
+			if ($qv_username = $DB->get_field('user', 'username', array('id'=>$qv_message->userid))){
+				$message->addAttribute('username',$qv_username);
+			}
+			$message->addAttribute('id',$qv_message->id);
+			$message->addAttribute('id',$qv_message->id);
+			if (isset($error)) $message->addAttribute('error',$error);
+		}
+	}
+
+    return $bean;
 }
 
 function readMessage($qv_section){
@@ -670,20 +686,18 @@ function readMessage($qv_section){
 
     // Mark section as read by userid 
     if ($qv_message_read = $DB->get_record('qv_messages_read', array('sid'=>$qv_section->id, 'userid'=>$USER->id))){
-        $qv_message_read->timereaded=time();
+        $qv_message_read->timereaded = time();
         if (!$DB->update_record('qv_messages_read', $qv_message_read)){
             $error = ERROR_DB_UPDATE;
         }
     }else{
         $qv_message_read = new stdClass();
-        $qv_message_read->sid=$qv_section->id;
-        $qv_message_read->userid=$USER->id;
-        $qv_message_read->timereaded=time();
+        $qv_message_read->sid = $qv_section->id;
+        $qv_message_read->userid = $USER->id;
+        $qv_message_read->timereaded = time();
         if (!$DB->insert_record('qv_messages_read', $qv_message_read)){ 
             $error = ERROR_DB_INSERT;
         }
     }
     return $qv_message_read;
 }
-
-

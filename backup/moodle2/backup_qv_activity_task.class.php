@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -16,6 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
+ * Defines backup_qv_activity_task class
  *
  * @package    mod
  * @subpackage qv
@@ -24,47 +24,49 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 require_once($CFG->dirroot . '/mod/qv/locallib.php'); // Because it exists (must)
 require_once($CFG->dirroot . '/mod/qv/backup/moodle2/backup_qv_stepslib.php'); // Because it exists (must)
- 
+
 /**
- * qv backup task that provides all the settings and steps to perform one
- * complete backup of the activity
+ * Provides the steps to perform one complete backup of the QV instance
  */
 class backup_qv_activity_task extends backup_activity_task {
- 
+
     /**
-     * Define (add) particular settings this activity can have
+     * No specific settings for this activity
      */
     protected function define_my_settings() {
-        // No particular settings for this activity
     }
- 
+
     /**
-     * Define (add) particular steps this activity can have
+     * Defines a backup step to store the instance data in the qv.xml file
      */
     protected function define_my_steps() {
         qv_normalize_date();
         $this->add_step(new backup_qv_activity_structure_step('qv_structure', 'qv.xml'));        
     }
- 
+
     /**
-     * Code the transformations to perform in the activity in
-     * order to get transportable (encoded) links
+     * Encodes URLs to the index.php and view.php scripts
+     *
+     * @param string $content some HTML text that eventually contains URLs to the activity instance scripts
+     * @return string the content with the URLs encoded
      */
     static public function encode_content_links($content) {
         global $CFG;
- 
-        $base = preg_quote($CFG->wwwroot,"/");
- 
+
+        $base = preg_quote($CFG->wwwroot, "/");
+
         // Link to the list of qvs
         $search="/(".$base."\/mod\/qv\/index.php\?id\=)([0-9]+)/";
         $content= preg_replace($search, '$@QVINDEX*$2@$', $content);
- 
+
         // Link to qv view by moduleid
         $search="/(".$base."\/mod\/qv\/view.php\?id\=)([0-9]+)/";
         $content= preg_replace($search, '$@QVVIEWBYID*$2@$', $content);
- 
+
         return $content;
     }
 }

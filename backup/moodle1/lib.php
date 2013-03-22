@@ -17,7 +17,7 @@
 
 /**
  * Provides support for the conversion of moodle1 backup to the moodle2 format
- * 
+ *
  * @package    mod
  * @subpackage qv
  * @copyright  2011 Departament d'Ensenyament de la Generalitat de Catalunya
@@ -26,23 +26,27 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
-
 require_once($CFG->dirroot . '/mod/qv/locallib.php');
- 
+
 /**
- * JClic conversion handler
+ * QV conversion handler
  */
 class moodle1_mod_qv_handler extends moodle1_mod_handler {
- 
+
+    /** @var moodle1_file_manager */
+    protected $fileman = null;
+
+    /** @var int cmid */
+    protected $moduleid = null;
+
     /**
      * Declare the paths in moodle.xml we are able to convert
      *
-     * The method returns list of {@link convert_path} instances. For each path returned,
-     * at least one of on_xxx_start(), process_xxx() and on_xxx_end() methods must be
-     * defined. The method process_xxx() is not executed if the associated path element is
-     * empty (i.e. it contains none elements or sub-paths only).
+     * The method returns list of {@link convert_path} instances.
+     * For each path returned, the corresponding conversion method must be
+     * defined.
      *
-     * Note that the path /MOODLE_BACKUP/COURSE/MODULES/MOD/JCLIC does not
+     * Note that the path /MOODLE_BACKUP/COURSE/MODULES/MOD/QV does not
      * actually exist in the file. The last element with the module name was
      * appended by the moodle1_converter class.
      *
@@ -50,8 +54,7 @@ class moodle1_mod_qv_handler extends moodle1_mod_handler {
      */
     public function get_paths() {
         return array(
-            new convert_path(
-                'qv', '/MOODLE_BACKUP/COURSE/MODULES/MOD/QV',
+            new convert_path('qv', '/MOODLE_BACKUP/COURSE/MODULES/MOD/QV',
                 array(
                     'renamefields' => array(
                         'description' => 'intro',
@@ -73,12 +76,19 @@ class moodle1_mod_qv_handler extends moodle1_mod_handler {
      * data available
      */
     public function process_qv($data) {
+		global $CFG;
 		
         // get the course module id and context id
         $instanceid     = $data['id'];
-        $cminfo         = $this->get_cminfo($instanceid);
-        $this->moduleid = $cminfo['id'];
+        $currentcminfo  = $this->get_cminfo($instanceid);
+        $this->moduleid = $currentcminfo['id'];
         $contextid      = $this->converter->get_contextid(CONTEXT_MODULE, $this->moduleid);
+
+        // conditionally migrate to html format in intro
+        if ($CFG->texteditors !== 'textarea') {
+            $data['intro']       = text_to_html($data['intro'], false, false, true);
+            $data['introformat'] = FORMAT_HTML;
+        }
 
         // get a fresh new file manager for this instance
         $this->fileman = $this->converter->get_file_manager($contextid, 'mod_qv');
@@ -144,7 +154,7 @@ class moodle1_mod_qv_handler extends moodle1_mod_handler {
      * This is executed when we reach the closing </MOD> tag of our 'qv' path
      */
     public function on_qv_end() {
-        // finalize qv.xml
+        // close qv.xml
         $this->xmlwriter->end_tag('qv');
         $this->xmlwriter->end_tag('activity');
         $this->close_xml_writer();
@@ -160,5 +170,4 @@ class moodle1_mod_qv_handler extends moodle1_mod_handler {
         $this->xmlwriter->end_tag('inforef');
         $this->close_xml_writer();
     }
-
 }

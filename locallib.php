@@ -109,55 +109,30 @@ class qv{
 			$this->context = context_module::instance($this->cm->id);
 			
 			$fs = get_file_storage();
-			if($this->packagefile = $fs->get_file($this->context->id, 'mod_qv', 'package', 0, '/', $this->reference)){
-				$this->filetype = QV_FILE_TYPE_LOCAL;
+			$files = $fs->get_area_files($this->context->id, 'mod_qv', 'package', 0, 'sortorder', false);
+			if (count($files) == 1) {
+				$this->packagefile = reset($files);
 			} else {
 				$this->filetype = QV_FILE_TYPE_EXTERNAL;
 			}
 		}
 	}
 
-
-	/**
-	 * Extracts QV package, sets up all variables.
-	 * Called whenever qv changes
-	 * @param object $qv instance - fields are updated and changes saved into database
-	 * @param bool $force_extract force full update if true
-	 * @return void
-	 */
-	private function extract_package($force_extract = false){
+	private function get_index_file($fs = false){
 		global $DB;
 		
-		if($this->filetype != QV_FILE_TYPE_LOCAL) return false;
+		if(!$fs) $fs = get_file_storage();
 		
-		if ($this->packagefile) {
-			
-			$fs = get_file_storage();
-			
-			$indexfile = $this->get_index_file($fs);
-			//Content out of date or updating on demand
-			if($force_extract || !$indexfile){
-				debugging('EXTRACTING PACKAGE...');
-				// now extract files
-				$this->delete_content();
-
-				$packer = get_file_packer('application/zip');
-				$this->packagefile->extract_to_storage($packer, $this->context->id, 'mod_qv', 'content', 0, '/');
-
-				$indexfile = $this->get_index_file($fs);
-				if($indexfile){
-					return $indexfile;
-				}
-			} else {
-				return $indexfile;
+		if(!$fs->get_file($this->context->id, 'mod_qv', 'content', 0, '/', $this->reference.'.xml')){
+			//Repair reference
+			debugging('Repair reference');
+			$this->reference = extract_package($this->cm->id);
+			if($this->reference){
+				$DB->set_field('qv','reference',$this->reference,array('id'=>$this->id));
 			}
 		}
-		return false;
-	}
-
-	private function get_index_file($fs = false){
-		if(!$fs) $fs = get_file_storage();
-		return  $fs->get_file($this->context->id, 'mod_qv', 'content', 0, '/html/', 'index.htm');
+		
+		return $fs->get_file($this->context->id, 'mod_qv', 'content', 0, '/html/', 'index.htm');
 	}
 
 	function get_url(){
@@ -165,8 +140,8 @@ class qv{
         
         if($this->filetype == QV_FILE_TYPE_EXTERNAL) {
             return $this->reference;
-        } else if($indexfile = $this->extract_package()){
-			$path = '/'.$this->context->id.'/mod_qv/content/0'.$indexfile->get_filepath().$indexfile->get_filename();
+        } else if($indexfile = $this->get_index_file()){
+			$path = '/'.$this->context->id.'/mod_qv/content/0/'.$this->reference.$indexfile->get_filepath().$indexfile->get_filename();
 			return file_encode_url($CFG->wwwroot.'/pluginfile.php', $path, false);
 		} else {
 			print_error('invalidqvfile','qv');
@@ -195,7 +170,8 @@ class qv{
 		if(!$qv_url) return false;
 
 		$params = array();
-		$params['server'] = $CFG->wwwroot.'/mod/qv/action/beans.php';
+		$paramsnotescaped = array();
+		$paramsnotescaped['server'] = $CFG->wwwroot.'/mod/qv/action/beans.php';
 		$params['assignmentid'] = $assignment->id;
 		$params['userid'] = $userid;
 		$params['fullname'] = $fullname;
@@ -218,27 +194,33 @@ class qv{
 		if ($this->filetype != QV_HASH_ONLINE) {
 			$fs = get_file_storage();
 			if(!$fs->get_file($this->context->id, 'mod_qv', 'content', 0, '/html/appl/', 'qv_local.jar'))
-				$params['appl'] = $CFG->qv_qvdistplugin_appl;
+				$paramsnotescaped['appl'] = $CFG->qv_qvdistplugin_appl;
 			if(!$fs->get_file($this->context->id, 'mod_qv', 'content', 0, '/html/css/', 'generic.css'))
-				$params['css'] = $CFG->qv_qvdistplugin_css;
+				$paramsnotescaped['css'] = $CFG->qv_qvdistplugin_css;
 			if(!$fs->get_file($this->context->id, 'mod_qv', 'content', 0, '/html/scripts/', 'qv_local.js'))
-				$params['js'] = $CFG->qv_qvdistplugin_scripts;
+				$paramsnotescaped['js'] = $CFG->qv_qvdistplugin_scripts;
 		} else {
 			$last = strrpos($qv_url, '/html/');
 			if ($last < strlen($qv_url)){
 				$base_file = substr($qv_url, 0, $last+1);
 				if (!qv_exists_url($base_file.'html/appl/qv_local.jar'))
-					$params['appl'] = $CFG->qv_qvdistplugin_appl;
+					$paramsnotescaped['appl'] = $CFG->qv_qvdistplugin_appl;
 				if (!qv_exists_url($base_file.'html/css/generic.css'))
-					$params['css'] = $CFG->qv_qvdistplugin_css;
+					$paramsnotescaped['css'] = $CFG->qv_qvdistplugin_css;
 				if (!qv_exists_url($base_file.'html/scripts/qv_local.js'))
-					$params['js'] = $CFG->qv_qvdistplugin_scripts;
+					$paramsnotescaped['js'] = $CFG->qv_qvdistplugin_scripts;
 			}
 		}
 
-		$url = new moodle_url($qv_url,$params);
-
-		return $url->out();
+		
+		//Hack
+		$url = new moodle_url($qv_url, $params);
+		$url = $url->out(false);
+		foreach ($paramsnotescaped as $key => $val) {
+           $url .= '&'.$key.'='.$val;
+        }
+		
+		return $url;
 	}
 
 	/**
@@ -292,16 +274,30 @@ class qv{
 			$params['resizable'] = 'yes';
 			$params['width'] = $this->width;
 			$params['height'] = $this->height;
-			$params['fullscreen'] = empty($this->width)||$this->width=='100%'||empty($this->height);
+			$fullscreen = empty($this->width)||$this->width=='100%'||empty($this->height) ? 'true':'false';
 			
-			$action = new popup_action('click', $url, 'popup', $params);
-			$content .= $OUTPUT->action_link($url, get_string('start', 'qv'), $action);
+			//One more hack
+			$attributes = array();
+			$attributes['href'] = $url;
+			$win_param = array();
+			foreach($params as $key=>$value){
+				$win_param[] = "$key=$value";
+			}
+			$onclick = 'openQV("'.$url.'","'.implode(',',$win_param).'",'.$fullscreen.');';
+			$attributes['onclick'] = $onclick;
+			$PAGE->requires->js('/mod/qv/qv.js');
+			$content .= html_writer::tag('a',get_string('start', 'qv'),$attributes);
+
+			//In moodle it should be like that but this make QV not work
+			//$action = new popup_action('click', $url, 'popup', $params);
+			//$content .= $OUTPUT->action_link($url, get_string('start', 'qv'), $action);
+						
 		}
 		$content .= $this->view_dates();
 		
 		if($isteacher){
 			$url = new moodle_url('/mod/qv/view.php', array('id' => $this->context->instanceid));
-            $content .= $OUTPUT->box(html_writer::link($url, get_string('return_results', 'qv')));
+            $content .= $OUTPUT->box(html_writer::link($url->out(false), get_string('return_results', 'qv')));
 		}
 		
 		return $content;
@@ -524,13 +520,6 @@ class qv{
         return $content;
     }
     
-
-	function delete_content(){
-		$fs = get_file_storage();
-		$fs->delete_area_files($this->context->id, 'mod_qv', 'content');
-	}
-
-
 }
 
 
@@ -585,8 +574,8 @@ function qv_get_filemanager_options(){
 	return $filemanager_options;
 }
 
-function qv_set_mainfile($data) {
-	$filename = null;
+function qv_save_package($data) {
+
 	$fs = get_file_storage();
 	$cmid = $data->coursemodule;
 	$draftitemid = $data->reference;
@@ -596,15 +585,66 @@ function qv_set_mainfile($data) {
 		file_save_draft_area_files($draftitemid, $context->id, 'mod_qv', 'package', 0, qv_get_filemanager_options());
 	}
 	
+	$reference = extract_package($cmid);
+	
+	return $reference;
+}
+
+/**
+ * Extracts QV package, sets up all variables.
+ * Called whenever qv changes
+ * @param int $cmid 
+ * @param bool $force_extract force full update if true
+ * @return void
+ */
+function extract_package($cmid){
+	global $DB;
+	
+	$fs = get_file_storage();
+	$context = context_module::instance($cmid);
 	$files = $fs->get_area_files($context->id, 'mod_qv', 'package', 0, 'sortorder', false);
 	if (count($files) == 1) {
 		// only one file attached, set it as main file automatically
-		$file = reset($files);
-		file_set_sortorder($context->id, 'mod_qv', 'package', 0, $file->get_filepath(), $file->get_filename(), 1);
-		$filename = $file->get_filename();
+		$package = reset($files);
+		file_set_sortorder($context->id, 'mod_qv', 'package', 0, $package->get_filepath(), $package->get_filename(), 1);
+		
+		$packagename = qv_get_package_name($cmid, $fs);
+		//Content out of date or updating on demand
+		if($packagename){
+			return $packagename;
+		} else {
+			// now extract files
+			$fs->delete_area_files($context->id, 'mod_qv', 'content');
+
+			$packer = get_file_packer('application/zip');
+			$package->extract_to_storage($packer, $context->id, 'mod_qv', 'content', 0, '/');
+
+			$packagename = qv_get_package_name($cmid, $fs);
+			if($packagename){
+				return $packagename;
+			}
+		}
 	}
-	return $filename;
+	return false;
 }
+
+function qv_get_package_name($cmid, $fs = false){
+	if(!$fs) $fs = get_file_storage();
+	$context = context_module::instance($cmid);
+	$files = $fs->get_area_files($context->id, 'mod_qv', 'content', 0, 'filepath, filename', false);
+	foreach($files as $file){
+		if($file->get_filepath() == '/' && $file->get_mimetype() == 'application/xml'){
+			$filename = $file->get_filename();
+			if($filename != 'imsmanifest.xml'){
+				return basename($filename, '.xml');
+			}
+		}
+	}
+	return false;
+}
+
+
+
         
 function qv_is_valid_external_url($url){
 	return preg_match('/(http:\/\/|https:\/\/|www).*\/*(\?[a-z+&\$_.-][a-z0-9;:@&%=+\/\$_.-]*)?$/i', $url);
@@ -723,7 +763,7 @@ function qv_is_valid_external_url($url){
 			$length = strpos(substr($qv_section->scores, $start+1), '#')+1;
 			$section_summary->score = substr($qv_section->scores, $start, $length);
 		}
-		// Pending Score //A
+		// Pending Score
 		$start2 = strpos($qv_section->pending_scores, $qv_section->sectionid.'_score=');
 		if ($start2>=0){
 			$start2 += strlen($qv_section->sectionid.'_score=');
