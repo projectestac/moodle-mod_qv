@@ -283,7 +283,7 @@ class qv{
 			foreach($params as $key=>$value){
 				$win_param[] = "$key=$value";
 			}
-			$onclick = 'openQV("'.$url.'","'.implode(',',$win_param).'",'.$fullscreen.');';
+			$onclick = 'return openQV("'.$url.'","'.implode(',',$win_param).'",'.$fullscreen.');';
 			$attributes['onclick'] = $onclick;
 			$PAGE->requires->js('/mod/qv/qv.js');
 			$content .= html_writer::tag('a',get_string('start', 'qv'),$attributes);
@@ -457,7 +457,7 @@ class qv{
                     if (isset($assignment_summary->id)){
 						$unread_messages = qv_assignment_messages($assignment_summary->id);
 						if($unread_messages > 0){
-							$unread_messages .= $OUTPUT->pix_icon('qv_msg_notread', get_string('msg_not_read', 'qv'));
+							$unread_messages .= $OUTPUT->pix_icon('qv_msg_notread', get_string('msg_not_read', 'qv'), 'mod_qv');
 						}
 					}
                     else $unread_messages = 0;
