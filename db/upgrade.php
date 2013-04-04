@@ -96,10 +96,10 @@ function xmldb_qv_upgrade($oldversion=0) {
 
     if ($oldversion < 2008061100) {
         // @Albert Llastarri
-        if ($qv_sections=get_records('qv_sections')){
+        if ($qv_sections = $DB->get_records('qv_sections')){
             foreach($qv_sections as $qv_section){
                 $qv_section->pending_scores=$qv_section->scores;
-                update_record("qv_sections", $qv_section);
+                $DB->update_record('qv_sections', $qv_section);
             }
         }
     }
