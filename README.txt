@@ -1,21 +1,21 @@
 ##
-# JClic module for Moodle
+# Quaderns Virtuals module for Moodle
 #
 # @package mod
-# @subpackage jclic
+# @subpackage qv
 # @copyright 2008 Departament d'Ensenyament de la Generalitat de Catalunya
-# @source https://github.com/projectestac/moodle-mod_jclic/
+# @source https://github.com/projectestac/moodle-mod_qv/
 # @license http://www.gnu.org/licenses/gpl-2.0.txt
 ##
 
-Clic [1] is a set of free software for the development of multimedia educational 
+Quaderns Virtuals [1] is a set of free software for the development of multimedia educational 
 activities.
 
-This module allows the incorporation of JClic activities in Moodle. Its main 
+This module allows the incorporation of Quaderns Virtuals (QV) in Moodle. Its main 
 features are:
-- Allows embedding easily JClic activities in some Moodle course.
-- Facilitates students tracing because it stores the score, date and duration 
-of each of the attempts made ​​by the users.
+- Allows embedding easily Quaderns Virtuals (virtual notebooks) in some Moodle course.
+- Facilitates students tracing because it stores the score, date, duration 
+and state of the work made ​​by the students.
 
 -----------------------------------------------------------------------------
 This program is free software; you can redistribute it and/or
@@ -48,7 +48,8 @@ Follow the usual installation instructions
 CREDITS
 
 Developers:
-   Sara Arjona Tellez (sarjona@xtec.cat)
+   Sara Arjona Tellez (sara.arjona@upcnet.es)
+   Pau Ferrer Ocaña (pau.ferrer-ocana@upcnet.es)
    
 With the support of:
     Education Government of Catalonia [2]
@@ -56,41 +57,16 @@ With the support of:
 
 
 
-JClic community support:
+QV community support:
    Monica Grau
 
 
-Translations:
-   Basque:
-     Abel Camacho  - didaktika@santurtzieus.com
-     Pedro Lonbide - zuzen@santurtzieus.com
-     
-   Brazilian
-     Kleber Calegario Batista - klebercal@gmail.com
-
-   Greek:
-     Yannis Kaskamanidis - kiolalis@gmail.com
-     
-   Galician:
-     Xosé Luis Barreiro Cebey - xoseluis@edu.xunta.es
-     
-   Hebrew:
-     Nadav Kavalerchik - nadavkav@gmail.com
- 
-
 Special Thanks:
    Sandra Fernandez 
-   Birgit Ferran
-   Silvia Garcia Yague
-   Albert Gasset Romo
-   Eva Gea
-   Toni Ginard
-   David Monllao
-   Jaume Rocarias
 
 
 
 -----------------------------------------------------------------------------
-[1] http://clic.xtec.cat/
+[1] http://clic.xtec.cat/qv_web
 [2] http://www.gencat.cat/ensenyament
 
