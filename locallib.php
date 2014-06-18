@@ -194,21 +194,21 @@ class qv{
 		if ($this->filetype != QV_HASH_ONLINE) {
 			$fs = get_file_storage();
 			if(!$fs->get_file($this->context->id, 'mod_qv', 'content', 0, '/html/appl/', 'qv_local.jar'))
-				$paramsnotescaped['appl'] = $CFG->qv_qvdistplugin_appl;
+				$paramsnotescaped['appl'] = $CFG->qv_distpluginappl;
 			if(!$fs->get_file($this->context->id, 'mod_qv', 'content', 0, '/html/css/', 'generic.css'))
-				$paramsnotescaped['css'] = $CFG->qv_qvdistplugin_css;
+				$paramsnotescaped['css'] = $CFG->qv_distplugincss;
 			if(!$fs->get_file($this->context->id, 'mod_qv', 'content', 0, '/html/scripts/', 'qv_local.js'))
-				$paramsnotescaped['js'] = $CFG->qv_qvdistplugin_scripts;
+				$paramsnotescaped['js'] = $CFG->qv_distpluginscripts;
 		} else {
 			$last = strrpos($qv_url, '/html/');
 			if ($last < strlen($qv_url)){
 				$base_file = substr($qv_url, 0, $last+1);
 				if (!qv_exists_url($base_file.'html/appl/qv_local.jar'))
-					$paramsnotescaped['appl'] = $CFG->qv_qvdistplugin_appl;
+					$paramsnotescaped['appl'] = $CFG->qv_distplugin_appl;
 				if (!qv_exists_url($base_file.'html/css/generic.css'))
-					$paramsnotescaped['css'] = $CFG->qv_qvdistplugin_css;
+					$paramsnotescaped['css'] = $CFG->qv_distplugincss;
 				if (!qv_exists_url($base_file.'html/scripts/qv_local.js'))
-					$paramsnotescaped['js'] = $CFG->qv_qvdistplugin_scripts;
+					$paramsnotescaped['js'] = $CFG->qv_distpluginscripts;
 			}
 		}
 
