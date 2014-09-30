@@ -36,5 +36,5 @@ $module->version   = 2014072500;      // The current module version (Date: YYYYM
 $module->requires  = 2011033009;      // Requires this Moodle version (2.0)
 $module->cron      = 0;               // Period for cron to check this module (secs)
 $module->component = 'mod_qv';        // To check on upgrade, that module sits in correct place
-$module->release   = 'v0.0.1';        // Human-readable version name
+$module->release   = 'v0.0.2';        // Human-readable version name
 $module->maturity = MATURITY_BETA;   // How stable the plugin is
