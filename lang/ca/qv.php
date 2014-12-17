@@ -100,8 +100,8 @@ $string['statecorrected'] = 'Corregit';
 $string['statepartiallycorrected'] = 'Corregit parcialment';
 $string['showcorrection'] = 'Mostra la correcció';
 $string['showinteraction'] = 'Mostra les intervencions';
-$string['timing'] = 'Temps';
-$string['unlimited'] = '﻿Il·limitat';
+$string['timing'] = 'Temporització';
+$string['unlimited'] = 'Il·limitat';
 $string['unread'] = 'Missatges no llegits';
 $string['width'] = 'Amplada';
 
