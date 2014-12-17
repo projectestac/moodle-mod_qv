@@ -66,10 +66,10 @@ Aquest mòdul permet al professorat afegir a un curs qualsevol activitat de QV i
 $string['modulenameplural'] = 'Quaderns Virtuals';
 $string['notopenyet'] = 'Aquesta activitat no estarà disponible fins el {$a}';
 $string['optionsheader'] = 'Opcions';
-$string['orderitems'] = 'Activa ordenació aleatòria preguntes';
-$string['orderitems_help'] = 'Activa ordenació aleatòria preguntes';
-$string['ordersections'] = 'Activa ordenació aleatòria fulls';
-$string['ordersections_help'] = 'Activa ordenació aleatòria fulls';
+$string['orderitems'] = 'Activa l\'ordenació aleatòria de preguntes';
+$string['orderitems_help'] = 'Activa l\'ordenació aleatòria de preguntes';
+$string['ordersections'] = 'Activa l\'ordenació aleatòria de fulls';
+$string['ordersections_help'] = 'Activa l\'ordenació aleatòria de fulls';
 $string['pluginadministration'] = 'Administració del mòdul de QV';
 $string['pluginname'] = 'QV';
 $string['preview'] = 'Previsualitza l\'activitat';
