@@ -66,10 +66,10 @@ Este módulo permite al profesorado añadir a un curso cualquier actividad de ti
 $string['modulenameplural'] = 'Cuadernos Virtuales';
 $string['notopenyet'] = 'Esta actividad no estará disponible hasta {$a}';
 $string['optionsheader'] = 'Opciones';
-$string['orderitems'] = 'Activar ordenación aleatoria preguntas';
-$string['orderitems_help'] = 'Activar ordenación aleatoria preguntas';
-$string['ordersections'] = 'Activar ordenación aleatoria hojas';
-$string['ordersections_help'] = 'Activar ordenación aleatoria hojas';
+$string['orderitems'] = 'Activar la ordenación aleatoria de preguntas';
+$string['orderitems_help'] = 'Activar la ordenación aleatoria de preguntas';
+$string['ordersections'] = 'Activar la ordenación aleatoria de hojas';
+$string['ordersections_help'] = 'Activar la ordenación aleatoria de hojas';
 $string['pluginadministration'] = 'Admnistración del módulo de QV';
 $string['pluginname'] = 'QV';
 $string['preview'] = 'Previsualizar actividad';
