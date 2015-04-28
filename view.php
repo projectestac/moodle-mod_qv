@@ -60,7 +60,7 @@ $params = array(
     'objectid' => $qv->id
 );
 $event = \mod_qv\event\course_module_viewed::create($params);
-$event->add_record_snapshot('qv', $qv);
+$event->add_record_snapshot('qv', $record);
 
 
 /// Print the page header
