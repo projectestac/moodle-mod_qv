@@ -513,9 +513,10 @@ function qv_get_user_grades($qv, $userid=0) {
         return;
     }
     $sessions_summary = qv_get_assignment_summary($qv->id, $userid);
+    $grades = array();
     $grades[$userid]->userid = $userid;
     $grades[$userid]->attempts = $sessions_summary->attempts;
-    $grades[$userid]->totaltime = $sessions_summary->totaltime;
+    $grades[$userid]->totaltime = $sessions_summary->time;
     $grades[$userid]->rawgrade = $sessions_summary->score;
     return $grades;
 }
