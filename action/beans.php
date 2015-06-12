@@ -32,12 +32,7 @@ define('ERROR_DB_INSERT', 'error_db_insert');
 define('ERROR_DB_UPDATE', 'error_db_update');
 define('ERROR_MAXDELIVER_EXCEEDED', 'error_maxdeliver_exceeded');
 
-
-if(isset($GLOBALS["HTTP_RAW_POST_DATA"]) && $GLOBALS["HTTP_RAW_POST_DATA"]){
-	$my_xml = $GLOBALS["HTTP_RAW_POST_DATA"];
-} else if(isset($HTTP_RAW_POST_DATA)){
-	$my_xml = $HTTP_RAW_POST_DATA;
-}
+$payload = file_get_contents("php://input");
 
 require_once("../../../config.php");
 require_once("../lib.php");
@@ -92,8 +87,9 @@ function characterData($parser, $text) {
 
 $xml_parser = xml_parser_create('UTF-8');
 xml_set_element_handler($xml_parser, 'startElement', 'endElement');
-xml_set_character_data_handler($xml_parser, 'characterData');
-xml_parse($xml_parser, $my_xml);
+// This function is disabled because it seems that is not needed
+// xml_set_character_data_handler($xml_parser, "characterData")
+xml_parse($xml_parser, $payload);
 xml_parser_free($xml_parser);
 
 switch($beans[0]['ID']){
@@ -661,7 +657,7 @@ function getMessages($assignmentid, $sectionid){
 	$bean->addAttribute('id','get_messages');
 	$bean->addAttribute('assignmentid',$assignmentid);
 	$bean->addAttribute('sectionid',$sectionid);
-	$bean->addAttribute('userid',$userid);
+	$bean->addAttribute('userid',$USER->id);
 	if (isset($error)) $bean->addAttribute('error',$error);
 	else if ($qv_section && $qv_messages = $DB->get_records('qv_messages', array('sid'=>$qv_section->id), 'created')){
 		foreach ($qv_messages as $qv_message) {
