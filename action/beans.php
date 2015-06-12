@@ -24,6 +24,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 header('Content-type: text/xml;charset=UTF-8');
+// Allow from any origin
 
 define('ERROR_BEAN_NOT_DEFINED', 'error_bean_not_defined');
 define('ERROR_ASSIGNMENTID_DOES_NOT_EXIST', 'error_assignmentid_does_not_exist');
@@ -31,15 +32,11 @@ define('ERROR_DB_INSERT', 'error_db_insert');
 define('ERROR_DB_UPDATE', 'error_db_update');
 define('ERROR_MAXDELIVER_EXCEEDED', 'error_maxdeliver_exceeded');
 
-$payload = file_get_contents("php://input");
-
 require_once("../../../config.php");
 require_once('beans.lib.php');
-require_once("../lib.php");
-require_once("../locallib.php");
 
 // Globals
-$inputbean = parse_bean($payload);
+$inputbean = get_bean();
 
 $action = isset($inputbean['ID']) ? $inputbean['ID'] : "";
 if (!empty($action)) {
@@ -98,13 +95,13 @@ switch($action) {
 		$sectionorder = isset($beanparams['sectionorder']) ? $beanparams['sectionorder'] : -1;
 		$itemorder = isset($beanparams['itemorder']) ? $beanparams['itemorder'] : -1;
 		$sectiontime = isset($beanparams['time']) ? $beanparams['time'] : 0;
-		$responses = $beanparams['responses'];
+		$responses = isset($beanparams['responses']) ? $beanparams['responses'] : "";
 		$bean = save_section($assignmentid, $sectionid, $responses, $sectionorder, $itemorder, $sectiontime);
 		break;
 	case "save_section_teacher":
 		$assignmentid = $beanparams['assignmentid'];
 		$sectionid = $beanparams['sectionid'];
-		$responses = $beanparams['responses'];
+		$responses = isset($beanparams['responses']) ? $beanparams['responses'] : "";
 		$scores = isset($beanparams['scores']) ? $beanparams['scores'] : "";
 		$bean = save_section_teacher($assignmentid, $sectionid, $responses, $scores);
 		break;

@@ -1,30 +1,32 @@
 <?php
-function parse_bean($payload) {
-    global $beans, $currentbean, $params, $thiselement, $oldelements, $elements;
-    $elements = array();
+require_once("../lib.php");
+require_once("../locallib.php");
+
+function get_bean() {
+    global $beans, $currentbean, $params, $thiselement, $oldelements;
     $oldelements = array();
     $thiselement = "";
     $currentbean = -1;
     $params = array();
     $beans = array();
 
+    $payload = file_get_contents("php://input");
     $xmlparser = xml_parser_create('UTF-8');
     xml_set_element_handler($xmlparser, 'start_element_bean', 'end_element_bean');
-    // This function is disabled because it seems that is not needed
-    // xml_set_character_data_handler($xml_parser, "character_data_bean")
+    xml_set_character_data_handler($xmlparser, 'character_data_bean');
     xml_parse($xmlparser, $payload);
     xml_parser_free($xmlparser);
 
-    unset($elements);
     unset($oldelements);
     unset($thiselement);
     unset($currentbean);
     unset($params);
+
     return array_shift($beans);
 }
 
 function start_element_bean($parser, $name, $attribs) {
-    global $beans, $currentbean, $params, $thiselement, $oldelements, $elements;
+    global $beans, $currentbean, $params, $thiselement, $oldelements;
 
     array_push($oldelements, $thiselement);
     $thiselement = $name;
@@ -46,7 +48,6 @@ function start_element_bean($parser, $name, $attribs) {
                                                 'minActions' => $attribs['MINACTIONS'],
                                                 'actions' => $attribs['ACTIONS']);
     }
-    $elements[ $thiselement ] = $attribs;
 }
 
 function end_element_bean($parser, $name) {
@@ -57,14 +58,14 @@ function end_element_bean($parser, $name) {
 }
 
 function character_data_bean($parser, $text) {
-    global $beans, $currentbean, $params, $thiselement, $elements;
+    global $beans, $currentbean, $params, $thiselement;
 
-    $elements[ $thiselement ] .= $text;
     if ($thiselement == 'MESSAGE' || $thiselement == 'RESPONSES' || $thiselement == 'SCORES') {
-        if (!array_key_exists(strtolower($thiselement), $params)) {
-            $params[strtolower($thiselement)] = "";
+        $strlowelement = strtolower($thiselement);
+        if (!isset($params[$strlowelement])) {
+            $params[$strlowelement] = "";
         }
-        $params[strtolower($thiselement)] .= str_replace("'", "&#39;", $text);
+        $params[$strlowelement] .= str_replace("'", "&#39;", $text);
     }
 }
 
@@ -127,7 +128,7 @@ function get_section($assignmentid, $sectionid) {
     if (!exists_assignment($assignmentid)) {
         $error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
     } else {
-        if ($qvsection = $DB->get_record('qv_sections', array('assignmentid' => $assignmentid, 'sectionid' => $sectionid))) {
+        if ($qvsection = get_section_from_db($assignmentid, $sectionid)) {
             $responses = $qvsection->responses;
             $scores = $qvsection->scores;
             $pendingscores = $qvsection->pending_scores;
@@ -211,13 +212,13 @@ function save_section($assignmentid, $sectionid, $responses, $sectionorder = -1,
             }
         }
 
-        if (!$qvsection = $DB->get_record('qv_sections', array('assignmentid' => $assignmentid, 'sectionid' => $sectionid))) {
+        if (!$qvsection = get_section_from_db($assignmentid, $sectionid)) {
             // Insert section
             $qvsection = new stdClass();
             $qvsection->assignmentid = $assignmentid;
             $qvsection->sectionid = $sectionid;
             $qvsection->responses = $responses;
-            $qvsection->state = 0;
+            $qvsection->state = qv::STATE_STARTED;
             $qvsection->time = $sectiontime;
             if (!$DB->insert_record('qv_sections', $qvsection)) {
                 $error = ERROR_DB_INSERT;
@@ -226,7 +227,7 @@ function save_section($assignmentid, $sectionid, $responses, $sectionorder = -1,
             if (check_max_deliver_not_exceeded($qvsection)) {
                 // Update section
                 $qvsection->responses = $responses;
-                $qvsection->state = 0;
+                $qvsection->state = qv::STATE_STARTED;
                 $qvsection->pending_scores = $qvsection->scores;
                 $qvsection->time = qv_add_time($qvsection->time, $sectiontime);
                 if (!$DB->update_record('qv_sections', $qvsection)) {
@@ -260,14 +261,14 @@ function save_section_teacher($assignmentid, $sectionid, $responses, $scores) {
     if (!$qvassignment) {
         $error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
     } else {
-        if (!$qvsection = $DB->get_record('qv_sections', array('assignmentid' => $assignmentid, 'sectionid' => $sectionid))) {
+        if (!$qvsection = get_section_from_db($assignmentid, $sectionid)) {
             // Insert section
             $qvsection = new stdClass();
             $qvsection->assignmentid = $assignmentid;
             $qvsection->sectionid = $sectionid;
             $qvsection->responses = $responses;
             $qvsection->pending_scores = $scores;
-            // $qvsection->state = 0;
+            $qvsection->state = qv::STATE_STARTED;
             $qvsection->time = '00:00:00';
             if (!$DB->insert_record('qv_sections', $qvsection)) {
                 $error = ERROR_DB_INSERT;
@@ -276,7 +277,7 @@ function save_section_teacher($assignmentid, $sectionid, $responses, $scores) {
             // Update section
             $qvsection->responses = $responses;
             $qvsection->pending_scores = $scores;
-            // $qvsection->state = 0;
+            $qvsection->state = qv::STATE_STARTED;
 
             if (!$DB->update_record('qv_sections', $qvsection)) {
                 $error = ERROR_DB_UPDATE;
@@ -332,7 +333,7 @@ function deliver_section($assignmentid, $sectionid, $responses, $scores, $sectio
             }
         }
 
-        if (!$qvsection = $DB->get_record('qv_sections', array('assignmentid' => $assignmentid, 'sectionid' => $sectionid))) {
+        if (!$qvsection = get_section_from_db($assignmentid, $sectionid)) {
             // Insert section
             $qvsection = new stdClass();
             $qvsection->assignmentid = $assignmentid;
@@ -341,7 +342,7 @@ function deliver_section($assignmentid, $sectionid, $responses, $scores, $sectio
             $qvsection->scores = $scores;
             $qvsection->pending_scores = $scores;
             $qvsection->attempts = 1;
-            $qvsection->state = 1;
+            $qvsection->state = qv::STATE_DELIVERED;
             $qvsection->time = $sectiontime;
             if (!$DB->insert_record('qv_sections', $qvsection)) {
                 $error = ERROR_DB_INSERT;
@@ -359,8 +360,8 @@ function deliver_section($assignmentid, $sectionid, $responses, $scores, $sectio
                 $qvsection->responses = $responses;
                 $qvsection->scores = $scores;
                 $qvsection->pending_scores = $scores;
-                $qvsection->attempts = $qvsection->attempts + 1;
-                $qvsection->state = 1;
+                $qvsection->attempts++;
+                $qvsection->state = qv::STATE_DELIVERED;
                 $qvsection->time = qv_add_time($qvsection->time, $sectiontime);
                 if (!$DB->update_record('qv_sections', $qvsection)) {
                     $error = ERROR_DB_UPDATE;
@@ -394,8 +395,8 @@ function deliver_section($assignmentid, $sectionid, $responses, $scores, $sectio
         $section->addAttribute('error', $error);
     }
     $section->addAttribute('attempts', $qvsection->attempts);
-    $section->addAttribute('maxdeliver', $qvsection->maxdeliver);
-    $section->addAttribute('showcorrection', $qvsection->showcorrection);
+    $section->addAttribute('maxdeliver', $maxdeliver);
+    $section->addAttribute('showcorrection', $showcorrection);
     $section->addAttribute('time', $qvsection->time);
     $section->addAttribute('state', $qvsection->state);
 
@@ -409,17 +410,17 @@ function correct_section($assignmentid, $sectionid, $responses, $scores) {
     if (!$qvassignment) {
         $error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
     } else {
-        if (!$qvsection = $DB->get_record('qv_sections', array('assignmentid' => $assignmentid, 'sectionid' => $sectionid))) {
+        if (!$qvsection = get_section_from_db($assignmentid, $sectionid)) {
             // Insert section
             $qvsection = new stdClass();
             $qvsection->assignmentid = $assignmentid;
             $qvsection->sectionid = $sectionid;
-            if ($responses = "") {
+            if ($responses == "") {
                 $qvsection->responses = "";
             } else {
                 $qvsection->responses = $responses;
             }
-            if (empty($scores)) {
+            if ($scores == "") {
                 $qvsection->scores = "";
                 $qvsection->pending_scores = "";
             } else {
@@ -427,14 +428,14 @@ function correct_section($assignmentid, $sectionid, $responses, $scores) {
                 $qvsection->pending_scores = $scores;
             }
             $qvsection->attempts = 0;
-            $qvsection->state = 2;
+            $qvsection->state = qv::STATE_CORRECTED;
 
             if (!$DB->insert_record('qv_sections', $qvsection)) {
                 $error = ERROR_DB_INSERT;
             }
         } else {
             // Update section
-            $qvsection->state = 2;
+            $qvsection->state = qv::STATE_CORRECTED;
             if ($responses != "") {
                 $qvsection->responses = $responses;
             }
@@ -474,7 +475,7 @@ function save_time($assignmentid, $sectionid, $sectiontime) {
     if (!exists_assignment($assignmentid)) {
         $error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
     } else {
-        if (!$qvsection = $DB->get_record('qv_sections', array('assignmentid' => $assignmentid, 'sectionid' => $sectionid))) {
+        if (!$qvsection = get_section_from_db($assignmentid, $sectionid)) {
             // Insert section
             $qvsection = new stdClass();
             $qvsection->assignmentid = $assignmentid;
@@ -482,7 +483,7 @@ function save_time($assignmentid, $sectionid, $sectiontime) {
             $qvsection->responses = "";
             $qvsection->scores = "";
             $qvsection->attempts = 0;
-            $qvsection->state = 0;
+            $qvsection->state = qv::STATE_STARTED;
             $qvsection->time = $sectiontime;
             if (!$DB->insert_record('qv_sections', $qvsection)) {
                     $error = ERROR_DB_UPDATE;
@@ -516,7 +517,7 @@ function add_message($assignmentid, $sectionid, $itemid, $userid, $message) {
     if (!exists_assignment($assignmentid)) {
         $error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
     } else if ($message != "") {
-        if (!$qvsection = $DB->get_record('qv_sections', array('assignmentid' => $assignmentid, 'sectionid' => $sectionid))) {
+        if (!$qvsection = get_section_from_db($assignmentid, $sectionid)) {
             // Insert section
             $qvsection = new stdClass();
             $qvsection->assignmentid = $assignmentid;
@@ -567,7 +568,7 @@ function get_messages($assignmentid, $sectionid) {
     if (!exists_assignment($assignmentid)) {
         $error = ERROR_ASSIGNMENTID_DOES_NOT_EXIST;
     } else {
-        if ($qvsection = $DB->get_record('qv_sections', array('assignmentid' => $assignmentid, 'sectionid' => $sectionid))) {
+        if ($qvsection = get_section_from_db($assignmentid, $sectionid)) {
             $qvmessageread = read_message($qvsection);
         }
     }
@@ -618,4 +619,9 @@ function read_message($qvsection) {
         }
     }
     return $qvmessageread;
+}
+
+function get_section_from_db($assignmentid, $sectionid) {
+    global $DB;
+    return $DB->get_record('qv_sections', array('assignmentid' => $assignmentid, 'sectionid' => $sectionid));
 }

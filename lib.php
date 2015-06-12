@@ -504,7 +504,7 @@ function qv_grade_item_delete($qv) {
  * @param int $userid optional user id, 0 means all users
  * @return array array of grades, false if none
  */
-function qv_get_user_grades($qv, $userid=0) {
+function qv_get_user_grades($qv, $userid = 0) {
     global $CFG, $DB;
     require_once($CFG->dirroot.'/mod/qv/locallib.php');
 
@@ -514,6 +514,7 @@ function qv_get_user_grades($qv, $userid=0) {
     }
     $sessions_summary = qv_get_assignment_summary($qv->id, $userid);
     $grades = array();
+    $grades[$userid] = new StdClass();
     $grades[$userid]->userid = $userid;
     $grades[$userid]->attempts = $sessions_summary->attempts;
     $grades[$userid]->totaltime = $sessions_summary->time;
